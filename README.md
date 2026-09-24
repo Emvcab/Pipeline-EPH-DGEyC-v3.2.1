@@ -14,8 +14,7 @@ El snapshot de referencia incluido en el repositorio cubre **12 períodos**, des
 
 El proyecto automatiza las tareas necesarias para descargar, integrar, validar y calcular indicadores trimestrales a partir de microdatos públicos. Aplica `PONDERA`, conserva valores faltantes, produce metadatos y bloquea resultados que no superan los controles críticos.
 
-El Hito 3 se presenta mediante un dashboard institucional para usuarios no técnicos. Machine Learning podrá evaluarse en una etapa posterior, una vez definido un problema institucional concreto, con datos suficientes y validación metodológica.
-
+Se presenta un dashboard institucional para usuarios no técnicos. 
 El Aglomerado 18 representa conjuntamente Santiago del Estero y La Banda. Los microdatos públicos no permiten separar ambas ciudades ni evaluar encuestadores o personal de carga.
 
 ## Indicadores
