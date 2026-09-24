@@ -223,7 +223,7 @@ Resultado automatizado de la versión 3.2.1: **68 tests aprobados**. Además, la
 ## Limitaciones y reporte anterior
 
 - Los indicadores se calculan a partir de microdatos públicos y no sustituyen procedimientos institucionales confirmados.
-- Los indicadores operativos de campo requieren bases internas y definiciones institucionales.
+
 - El archivo `docs/Reporte_Ejecutivo_EPH_SDE_4T2025.pdf` se conserva como antecedente, pero no se ofrece en el dashboard: utiliza los nombres y denominadores anteriores y contiene una línea futura que ya no representa el alcance del Hito 3. No existe una fuente editable equivalente en el repositorio.
 
 ## Fuente
