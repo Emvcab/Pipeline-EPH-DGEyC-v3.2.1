@@ -1,0 +1,24 @@
+{
+  "nombre_archivo": "PORTAL_ADMINISTRACION.md",
+  "descripcion": "Documento de apoyo para el dashboard: PORTAL_ADMINISTRACION.md.",
+  "clasificacion_load": "Disponibilización",
+  "fuente": "Encuesta Permanente de Hogares - microdatos públicos",
+  "organismo_productor": "Instituto Nacional de Estadística y Censos (INDEC)",
+  "url_origen": "https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/",
+  "aglomerado_codigo": 18,
+  "aglomerado_nombre": "Santiago del Estero - La Banda",
+  "periodo": null,
+  "anio": null,
+  "trimestre": null,
+  "fecha_hora_generacion": "2026-09-24T06:02:02",
+  "version_pipeline": "3.2.1",
+  "estado_validacion": "VALIDADO",
+  "ultima_ejecucion_exitosa": "2026-09-24T06:02:02",
+  "archivo_origen": "PORTAL_ADMINISTRACION.md",
+  "identificador_ejecucion": "67a0c03d8f62c72b",
+  "hash_sha256": "a7071936aa111741f3100efff185fb9ee9e0e08e0e72093dd409040203e9932c",
+  "advertencias_metodologicas": [
+    "El aglomerado 18 no permite separar Santiago Capital de La Banda."
+  ],
+  "ingresos_nominales": false
+}

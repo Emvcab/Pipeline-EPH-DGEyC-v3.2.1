@@ -1,0 +1,24 @@
+{
+  "nombre_archivo": "manifest_salidas.json",
+  "descripcion": "Manifiesto general de salidas del pipeline.",
+  "clasificacion_load": "Disponibilización",
+  "fuente": "Encuesta Permanente de Hogares - microdatos públicos",
+  "organismo_productor": "Instituto Nacional de Estadística y Censos (INDEC)",
+  "url_origen": "https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/",
+  "aglomerado_codigo": 18,
+  "aglomerado_nombre": "Santiago del Estero - La Banda",
+  "periodo": null,
+  "anio": null,
+  "trimestre": null,
+  "fecha_hora_generacion": "2026-09-24T06:02:02",
+  "version_pipeline": "3.2.1",
+  "estado_validacion": "VALIDADO",
+  "ultima_ejecucion_exitosa": "2026-09-24T06:02:02",
+  "archivo_origen": null,
+  "identificador_ejecucion": "25b1cf3c3ff428c5",
+  "hash_sha256": "727f64c13f8a237968c9fd7fc21210768db890405eca787fb430d82179d1a5b2",
+  "advertencias_metodologicas": [
+    "El aglomerado 18 no permite separar Santiago Capital de La Banda."
+  ],
+  "ingresos_nominales": false
+}

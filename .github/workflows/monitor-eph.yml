@@ -1,0 +1,48 @@
+name: Monitor EPH INDEC
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Lunes 12:00 UTC (09:00 de Argentina, UTC-3).
+    - cron: "0 12 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Consultar publicaciones EPH
+        shell: bash
+        run: |
+          python src/monitor_actualizaciones.py | tee monitor_eph.log
+          {
+            echo '## Monitor EPH INDEC'
+            echo '```text'
+            cat monitor_eph.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar reporte de auditoría
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitor-eph-${{ github.run_number }}
+          path: |
+            results/monitor_actualizaciones/
+            monitor_eph.log
+          if-no-files-found: warn
+          retention-days: 30
