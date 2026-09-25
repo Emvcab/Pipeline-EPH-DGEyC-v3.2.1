@@ -1,5 +1,5 @@
 """
-EDA — EPH Santiago del Estero · 2023-2025
+EDA — EPH Santiago del Estero · período disponible
 Práctica Profesionalizante II · ITSE 2026
 Grupo: Achaval · Cabaña · Constantinidi · Gomez · Pinto Villegas
 
@@ -11,7 +11,7 @@ Genera 4 gráficos PNG.
 
 # ────────────────────────────────────────────────────────────────────
 # # Análisis Exploratorio de Datos (EDA) — EPH Santiago del Estero
-# ## Evolución del mercado laboral · 2023-2025
+# ## Evolución del mercado laboral · período disponible
 # 
 # **Práctica Profesionalizante II — ITSE 2026**
 # **Grupo:** Achaval · Cabaña · Constantinidi · Gomez · Pinto Villegas
@@ -29,9 +29,9 @@ Genera 4 gráficos PNG.
 # 3. **Ingresos y no respuesta** de ingresos
 # 4. **Comparación interanual** (mismo trimestre entre años)
 # 
-# Se priorizó la claridad interpretativa por sobre la cantidad de gráficos: con solo
-# 12 trimestres de datos, un conjunto acotado de visualizaciones bien elegidas comunica
-# mejor que una batería extensa de gráficos estadísticos.
+# Se priorizó la claridad interpretativa por sobre la cantidad de gráficos. La cantidad
+# de períodos se obtiene del histórico cargado para que el EDA siga vigente cuando se
+# incorporan nuevos trimestres.
 # 
 # **Fuente:** histórico generado por el pipeline ETL a partir de microdatos EPH-INDEC.
 
@@ -77,7 +77,16 @@ candidatos = [
 ARCHIVO = next((str(p) for p in candidatos if p.exists()), "historico_SDE.csv")
 df = pd.read_csv(ARCHIVO)
 df = df.sort_values(["anio","trimestre"]).reset_index(drop=True)
-print(f"Cargados {len(df)} trimestres desde: {ARCHIVO}")
+
+# Metadatos dinámicos del histórico cargado
+N_PERIODOS = len(df)
+PERIODO_INICIO = str(df["periodo"].iloc[0])
+PERIODO_FIN = str(df["periodo"].iloc[-1])
+RANGO_PERIODOS = f"{PERIODO_INICIO}–{PERIODO_FIN}"
+ANIOS_DISPONIBLES = sorted(df["anio"].dropna().astype(int).unique().tolist())
+
+print(f"Cargados {N_PERIODOS} trimestres desde: {ARCHIVO}")
+print(f"Rango disponible: {RANGO_PERIODOS}")
 
 # Configuración visual común a todos los gráficos
 
@@ -137,13 +146,14 @@ ax.set_xticks(x)
 ax.set_xticklabels(periodos, rotation=45, ha="right", fontsize=9)
 ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 ax.set_ylabel("% de la población total", fontsize=10)
-ax.set_title("Evolución del mercado laboral — Santiago del Estero · 2023-2025",
+ax.set_title(f"Evolución del mercado laboral — Santiago del Estero · {RANGO_PERIODOS}",
              fontsize=13, fontweight="bold", pad=12)
 ax.legend(loc="center right", fontsize=10, frameon=True)
 
-# Separadores de año
-for sep in [3.5, 7.5]:
-    ax.axvline(sep, color="gray", linestyle=":", alpha=0.4)
+# Separadores de año calculados según los períodos realmente cargados
+for i in range(1, len(df)):
+    if int(df.loc[i, "anio"]) != int(df.loc[i - 1, "anio"]):
+        ax.axvline(i - 0.5, color="gray", linestyle=":", alpha=0.4)
 
 plt.tight_layout()
 plt.savefig("eda_1_mercado_laboral.png", bbox_inches="tight", dpi=140)
@@ -224,7 +234,7 @@ ax2.tick_params(axis="y", labelcolor=ROJO)
 ax2.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 ax2.grid(False)
 
-ax1.set_title("Ingresos y no respuesta de ingresos — Santiago del Estero · 2023-2025",
+ax1.set_title(f"Ingresos y no respuesta de ingresos — Santiago del Estero · {RANGO_PERIODOS}",
               fontsize=13, fontweight="bold", pad=12)
 
 # Leyenda combinada
@@ -273,10 +283,12 @@ plt.tight_layout()
 plt.savefig("eda_4_interanual.png", bbox_inches="tight", dpi=140)
 plt.show()
 
-print("\nLa comparación interanual confirma las tendencias:")
-print("- Actividad: cae año a año")
-print("- Inactividad: sube año a año")
-print("- No respuesta: claramente más alta en 2025")
+print(f"\nComparación interanual disponible entre {ANIOS_DISPONIBLES[0]} y {ANIOS_DISPONIBLES[-1]}.")
+ultimo_anio = ANIOS_DISPONIBLES[-1]
+n_trim_ultimo_anio = int((df["anio"] == ultimo_anio).sum())
+if n_trim_ultimo_anio < 4:
+    print(f"Nota: {ultimo_anio} es un año parcial en el histórico cargado ({n_trim_ultimo_anio} trimestre/s).")
+print("El gráfico permite comparar el mismo trimestre entre años sin fijar conclusiones a un año específico.")
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -312,19 +324,27 @@ print("=" * 58)
 
 # ────────────────────────────────────────────────────────────────────
 # ### Principales hallazgos
-# 
-# **1. La participación laboral cae de forma sostenida** — la actividad bajó ~6 puntos
-# porcentuales en tres años, con la inactividad subiendo en espejo.
-# 
-# **2. La desocupación es estructuralmente baja** — nunca superó el 1,5%, pero debe leerse
-# junto a la alta informalidad: no refleja pleno empleo sino absorción informal.
-# 
-# **3. La informalidad es persistente y elevada** — más de la mitad de los ocupados trabaja
-# sin registro en todos los trimestres disponibles.
-# 
-# **4. La no respuesta de ingresos creció en 2025** — de menos del 1% en 2023 a valores de
-# 3-4% en 2025. Este patrón se mantiene como indicador de calidad para seguimiento.
-# 
+#
+# Las conclusiones numéricas se calculan a partir del histórico efectivamente cargado,
+# evitando dejar afirmaciones fijas a 2025 que queden desactualizadas al incorporar
+# nuevos trimestres.
+
+actividad_delta = ultimo["tasa_actividad_oficial"] - primer["tasa_actividad_oficial"]
+desoc_min = df["tasa_desocupacion"].min()
+desoc_max = df["tasa_desocupacion"].max()
+
+print("\nHALLAZGOS DINÁMICOS")
+print(f"1. Actividad: {primer['tasa_actividad_oficial']:.1f}% → "
+      f"{ultimo['tasa_actividad_oficial']:.1f}% ({actividad_delta:+.1f} pp).")
+print(f"2. Desocupación: rango observado {desoc_min:.1f}%–{desoc_max:.1f}% "
+      f"en {RANGO_PERIODOS}.")
+if len(inf) > 0:
+    print(f"3. Informalidad: promedio {inf['tasa_informalidad'].mean():.1f}% "
+          f"en los trimestres con dato disponible.")
+print(f"4. No respuesta de ingresos: "
+      f"{primer['tasa_no_respuesta_ingresos_ocupados']:.1f}% → "
+      f"{ultimo['tasa_no_respuesta_ingresos_ocupados']:.1f}%.")
+
 # ---
 # *EDA — Práctica Profesionalizante II · ITSE 2026*
 # *Grupo: Achaval · Cabaña · Constantinidi · Gomez · Pinto Villegas*
