@@ -251,3 +251,8 @@ Resultado automatizado de la versión 3.2.1: **68 tests aprobados**. Además, la
 ## Fuente
 
 Encuesta Permanente de Hogares — Instituto Nacional de Estadística y Censos (INDEC), República Argentina: <https://www.indec.gob.ar>.
+
+
+## Análisis segmentado V3.3
+
+La V3.3 agrega una capa analítica sobre el ETL 3.2.1 para explorar brechas por sexo, edad y nivel educativo, además de ingresos por deciles cuando la variable `ADECOCUR` está disponible. El portal muestra estas salidas en **Brechas y perfiles**. Son estimaciones descriptivas de la EPH y deben leerse junto con las consideraciones de error muestral.

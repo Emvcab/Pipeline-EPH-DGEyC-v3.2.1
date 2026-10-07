@@ -9,6 +9,13 @@
 
 ## 3.3.0 — 2026-10-07
 
+### Profundidad analítica — respuesta a devolución DPE
+- Se agrega `src/analisis_segmentado.py` para calcular brechas por sexo, edad y nivel educativo.
+- Las tasas específicas por sexo usan población de 14 años y más, siguiendo la presentación de INDEC.
+- Se incorporan deciles de ingreso de la ocupación principal mediante `ADECOCUR` cuando está disponible.
+- El portal suma la sección **Brechas y perfiles** y mantiene advertencias sobre error muestral y alcance descriptivo.
+- Las salidas segmentadas son agregadas y pueden incorporarse al snapshot; los microdatos siguen fuera del snapshot.
+
 ### Mejorado — visualización e interactividad temporal
 
 - El portal incorpora **Plotly** para los gráficos de evolución laboral e ingresos.
