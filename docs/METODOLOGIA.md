@@ -27,7 +27,7 @@ tasa_inactividad_10_mas = inactivos expandidos / población de 10 años y más e
 
 Informalidad: ocupados ponderados con `EMPLEO = 2` / ocupados ponderados con `EMPLEO` en `{1, 2}` × 100. En `2023T1`, `2023T2` y `2023T3`, la variable necesaria para estimar informalidad no está disponible. Por ese motivo, el indicador se presenta como no disponible y no se realiza imputación ni se reemplazan faltantes por cero.
 
-Para ingresos se consideran ocupados con `P21 > 0`. El promedio ponderado es suma(`P21 × PONDERA`) / suma(`PONDERA`). Todos los valores monetarios son pesos argentinos nominales y requieren deflactación para estudiar poder adquisitivo.
+En el indicador agregado heredado del motor ETL 3.2.1 se consideran ocupados con `P21 > 0` y se conserva la formulación histórica del proyecto para no alterar la serie ya validada. En la nueva capa segmentada V3.3, los promedios de `P21` utilizan `PONDIIO`, el factor de expansión específico que INDEC publica para el ingreso de la ocupación principal. Todos los valores monetarios son pesos argentinos nominales y requieren deflactación para estudiar poder adquisitivo.
 
 ## Limitaciones
 
@@ -47,7 +47,7 @@ La capa de análisis segmentado no modifica las tasas agregadas históricas del 
 - **Sexo:** las tasas de actividad, empleo y desocupación se calculan para la población de **14 años y más**, siguiendo el criterio de tasas específicas utilizado en los informes de mercado de trabajo del INDEC. `CH04=1` corresponde a varón y `CH04=2` a mujer.
 - **Edad:** se presentan grupos de 14 a 29 años, 30 a 64 años y 65 años y más. Las tasas se calculan dentro de cada grupo.
 - **Nivel educativo:** se utiliza `NIVEL_ED` (o `NIVELED` como compatibilidad histórica) y se excluye `9=Ns/Nr` de las categorías publicadas.
-- **Deciles de ingreso:** cuando la base incluye `ADECOCUR`, se utiliza esa escala decílica construida por INDEC para el ingreso de la ocupación principal dentro del aglomerado. No se reemplaza por deciles calculados localmente si la variable no está disponible.
-- **Ingresos:** el promedio mostrado por segmento usa `P21 > 0` y `PONDERA` entre ocupados. Se expresa en pesos corrientes y no mide poder adquisitivo.
+- **Deciles de ingreso:** cuando la base incluye `ADECOCUR` y `PONDIIO`, se utiliza la escala decílica construida por INDEC para el ingreso de la ocupación principal dentro del aglomerado. No se reemplaza por deciles calculados localmente si la variable no está disponible.
+- **Ingresos:** el promedio mostrado por segmento usa `P21 > 0` y `PONDIIO` entre ocupados, porque INDEC identifica `PONDIIO` como el ponderador corregido por no respuesta para el ingreso de la ocupación principal. Se expresa en pesos corrientes y no mide poder adquisitivo.
 
 Estas estimaciones son descriptivas. Las diferencias entre grupos no se presentan como causalidad ni como significancia estadística sin un tratamiento específico de errores muestrales.
