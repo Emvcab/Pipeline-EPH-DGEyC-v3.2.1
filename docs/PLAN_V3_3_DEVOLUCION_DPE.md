@@ -60,3 +60,14 @@ La V3.3 amplía la capacidad analítica y de consulta, pero mantiene una separac
 `microdatos → cálculo validado → histórico → visualización/interpretación`
 
 La interfaz puede cambiar filtros y períodos de análisis; no debe cambiar silenciosamente definiciones metodológicas del ETL.
+
+
+## Implementado en el segundo incremento
+
+- Brechas por sexo para población de 14 años y más.
+- Perfiles por edad (14–29, 30–64, 65+).
+- Indicadores por nivel educativo (`NIVEL_ED`/`NIVELED`).
+- Ingreso medio por decil de ocupación principal usando `ADECOCUR` cuando existe.
+- Nueva sección del portal: **Brechas y perfiles**.
+
+Pendiente: comparaciones territoriales externas, reporte PDF y análisis interpretativo contextual.
