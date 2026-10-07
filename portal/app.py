@@ -323,6 +323,7 @@ estado_ultimo = estados.loc[estados["periodo"].astype(str) == periodo_ultimo].il
 (
     tab_resumen,
     tab_evolucion,
+    tab_brechas,
     tab_ingresos,
     tab_calendario,
     tab_calidad,
@@ -331,6 +332,7 @@ estado_ultimo = estados.loc[estados["periodo"].astype(str) == periodo_ultimo].il
 ) = st.tabs([
     "Resumen ejecutivo",
     "Evolución laboral",
+    "Brechas y perfiles",
     "Ingresos",
     "Calendario",
     "Calidad y auditoría",
@@ -512,6 +514,96 @@ with tab_evolucion:
         "y no se realiza imputación ni se reemplazan faltantes por cero."
     )
 
+
+with tab_brechas:
+    st.header("Brechas y perfiles")
+    st.caption(
+        "Esta sección profundiza el análisis de los microdatos por sexo, edad, nivel educativo "
+        "y deciles de ingreso cuando esas variables están disponibles. Las diferencias son "
+        "descriptivas y deben interpretarse considerando el error muestral de la EPH."
+    )
+    periodo_brechas = st.selectbox(
+        "Período para análisis segmentado",
+        periodos_disponibles,
+        index=len(periodos_disponibles) - 1,
+        key="brechas_periodo",
+    )
+    ruta_brechas = DIR_ACTIVO / f"analisis_segmentado_SDE_{periodo_brechas}.csv"
+    brechas = leer_csv(ruta_brechas)
+    if brechas is None or brechas.empty:
+        st.info(
+            "Este período todavía no tiene salida segmentada publicada. Para generarla hay que "
+            "reprocesar el trimestre con la V3.3 y luego actualizar explícitamente el snapshot."
+        )
+    else:
+        dimensiones = brechas["dimension"].dropna().astype(str).unique().tolist()
+        dimension = st.selectbox(
+            "Dimensión de análisis",
+            dimensiones,
+            key=f"brechas_dimension_{periodo_brechas}",
+        )
+        vista = brechas[brechas["dimension"].astype(str) == dimension].copy()
+        columnas_tabla = [
+            "categoria", "n_muestra", "poblacion_expandida", "tasa_actividad",
+            "tasa_empleo", "tasa_desocupacion", "tasa_informalidad",
+            "ingreso_promedio_ponderado_ocupados",
+        ]
+        columnas_tabla = [c for c in columnas_tabla if c in vista.columns]
+        st.dataframe(vista[columnas_tabla], width="stretch", hide_index=True)
+
+        if dimension != "Decil de ingreso":
+            metrica = st.selectbox(
+                "Indicador para comparar",
+                ["tasa_actividad", "tasa_empleo", "tasa_desocupacion", "tasa_informalidad"],
+                format_func=lambda x: {
+                    "tasa_actividad": "Tasa de actividad",
+                    "tasa_empleo": "Tasa de empleo",
+                    "tasa_desocupacion": "Tasa de desocupación",
+                    "tasa_informalidad": "Tasa de informalidad",
+                }[x],
+                key=f"brechas_metrica_{periodo_brechas}_{dimension}",
+            )
+            graf = vista[["categoria", metrica]].copy()
+            graf[metrica] = pd.to_numeric(graf[metrica], errors="coerce")
+            graf = graf.dropna()
+            if not graf.empty:
+                fig = go.Figure(go.Bar(
+                    x=graf["categoria"], y=graf[metrica],
+                    hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>",
+                ))
+                valores = graf[metrica].tolist()
+                rango = rango_eje(valores)
+                fig.update_layout(
+                    title=f"{dimension} · {periodo_brechas}",
+                    xaxis_title="", yaxis_title="Porcentaje",
+                    margin=dict(l=20, r=20, t=55, b=20),
+                )
+                if rango is not None:
+                    fig.update_yaxes(range=[max(0, rango[0]), rango[1]])
+                st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+        else:
+            graf = vista[["categoria", "ingreso_promedio_ponderado_ocupados"]].copy()
+            graf["ingreso_promedio_ponderado_ocupados"] = pd.to_numeric(
+                graf["ingreso_promedio_ponderado_ocupados"], errors="coerce"
+            )
+            graf = graf.dropna()
+            if not graf.empty:
+                fig = go.Figure(go.Bar(
+                    x=graf["categoria"], y=graf["ingreso_promedio_ponderado_ocupados"],
+                    hovertemplate="%{x}<br>$%{y:,.0f}<extra></extra>",
+                ))
+                fig.update_layout(
+                    title=f"Ingreso medio de la ocupación principal por decil · {periodo_brechas}",
+                    xaxis_title="", yaxis_title="Pesos corrientes",
+                    margin=dict(l=20, r=20, t=55, b=20),
+                )
+                st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+
+        st.caption(
+            "Sexo: tasas específicas para población de 14 años y más. Los deciles utilizan "
+            "ADECOCUR, la escala decílica del ingreso de la ocupación principal construida por "
+            "INDEC para el aglomerado. Si esa variable no existe, no se fabrican deciles locales."
+        )
 
 with tab_ingresos:
     st.header("Ingresos nominales")
