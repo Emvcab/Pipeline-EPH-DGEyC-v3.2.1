@@ -15,6 +15,7 @@ def base_mock() -> pd.DataFrame:
     return pd.DataFrame({
         "AGLOMERADO": [18] * 10,
         "PONDERA": [100] * 10,
+        "PONDIIO": [100, 100, 300, 100, 500, 100, 700, 100, 900, 1100],
         "ESTADO": [1, 2, 1, 3, 1, 2, 1, 3, 1, 1],
         "EMPLEO": [1, 0, 2, 0, 2, 0, 1, 0, 2, 1],
         "P21": [100, 0, 300, 0, 500, 0, 700, 0, 900, 1100],
@@ -53,3 +54,21 @@ def test_acepta_niveled_como_nombre_alternativo():
     datos = base_mock().rename(columns={"NIVEL_ED": "NIVELED"})
     resultado = generar_analisis_segmentado(datos, 2025, 4)
     assert "Nivel educativo" in set(resultado["dimension"])
+
+
+def test_ingreso_segmentado_usa_pondiio():
+    datos = base_mock()
+    resultado = generar_analisis_segmentado(datos, 2025, 4)
+    mujeres = resultado[(resultado["dimension"] == "Sexo") & (resultado["categoria"] == "Mujer")].iloc[0]
+    # Ocupadas con P21 positivo: 300 con peso 300 y 900 con peso 900.
+    esperado = round((300 * 300 + 900 * 900) / (300 + 900), 0)
+    assert mujeres["ingreso_promedio_ponderado_ocupados"] == esperado
+
+
+def test_deciles_requieren_pondiio_para_expansion_de_ingreso():
+    datos = base_mock().drop(columns=["PONDIIO"])
+    resultado = generar_analisis_segmentado(datos, 2025, 4)
+    assert "Decil de ingreso" not in set(resultado["dimension"])
+    # Las dimensiones laborales siguen disponibles, pero el ingreso queda sin estimar.
+    assert {"Sexo", "Edad", "Nivel educativo"} <= set(resultado["dimension"])
+    assert resultado["ingreso_promedio_ponderado_ocupados"].isna().all()
