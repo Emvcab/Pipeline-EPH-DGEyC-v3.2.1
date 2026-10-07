@@ -1,5 +1,26 @@
 # Historial de cambios
 
+### Mantenimiento de estructura del repositorio
+- El portal Streamlit se ubica ahora en `portal/app.py`, separado de los notebooks de análisis.
+- `notebooks/app.py` se mantiene como lanzador de compatibilidad para no romper despliegues existentes.
+- No cambia el ETL, los indicadores, las validaciones ni la lógica administrativa.
+
+## 3.3.0 — 2026-10-07
+
+### Mejorado — visualización e interactividad temporal
+
+- El portal incorpora **Plotly** para los gráficos de evolución laboral e ingresos.
+- Los ejes verticales se ajustan al rango de los datos visibles en lugar de forzarse a cero cuando eso reduciría la legibilidad de las variaciones.
+- El Resumen ejecutivo permite elegir un **período de referencia** y un **período de comparación**.
+- Las métricas muestran diferencias descriptivas en puntos porcentuales entre los dos períodos elegidos.
+- Evolución laboral e Ingresos incorporan filtros temporales `Desde` / `Hasta`.
+- Se agrega `src/visualizacion.py` para aislar filtros y rangos de visualización de la lógica estadística del ETL.
+- Se agregan 6 pruebas nuevas; suite total: **74 tests aprobados**.
+- El motor ETL permanece en `3.2.1`; no se cambian fórmulas, validaciones críticas ni publicación transaccional.
+- Esta versión inicia la respuesta técnica a la devolución de la DPE; análisis por sexo, edad, educación, deciles, contexto territorial y exportación PDF quedan planificados como siguientes incrementos.
+
+---
+
 ## 3.2.1 — 2026-09-24
 
 ### Corregido — calendario y ejecución por lote

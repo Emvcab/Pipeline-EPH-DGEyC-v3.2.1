@@ -1,6 +1,7 @@
 # Pipeline EPH — Santiago del Estero
 
-**Versión del pipeline:** `3.2.1` (ajuste de calendario y ejecución segura de períodos futuros)
+**Versión del portal:** `3.3.0` (visualización interactiva y selección temporal)  
+**Versión del motor ETL:** `3.2.1` (sin cambios metodológicos en esta evolución)
 
 Sistema para descargar, integrar, validar y calcular indicadores trimestrales a partir de microdatos públicos de la Encuesta Permanente de Hogares (EPH) del INDEC para el **Aglomerado 18 — Santiago del Estero - La Banda**.
 
@@ -10,11 +11,27 @@ El snapshot de referencia incluido en el repositorio cubre **12 períodos**, des
 **Desarrollado por:** Práctica Profesionalizante II · ITSE 2026
 **Grupo:** Achaval María José · Cabaña Emilio · Constantinidi Leandro · Gomez Cinthia · Pinto Villegas Eduardo
 
+
+## Novedades del portal 3.3.0
+
+Esta evolución responde a observaciones de uso institucional sin modificar las fórmulas del motor ETL:
+
+- gráficos de evolución migrados a **Plotly**, con hover, zoom y lectura interactiva;
+- ejes verticales ajustados al rango visible para no ocultar variaciones relevantes;
+- selección de cualquier trimestre validado como período de referencia;
+- comparación directa entre dos trimestres mediante diferencias en puntos porcentuales;
+- filtros `Desde` / `Hasta` para las series laborales y de ingresos;
+- utilidades de visualización separadas en `src/visualizacion.py`;
+- suite automatizada ampliada a **74 tests**.
+
+La V3.3.0 es el primer incremento de una mejora más amplia. Los cruces por sexo, edad, nivel educativo, deciles de ingreso, reportes PDF y comparaciones territoriales requieren una etapa analítica adicional y se documentan en `docs/PLAN_V3_3_DEVOLUCION_DPE.md`.
+
 ## Alcance
 
 El proyecto automatiza las tareas necesarias para descargar, integrar, validar y calcular indicadores trimestrales a partir de microdatos públicos. Aplica `PONDERA`, conserva valores faltantes, produce metadatos y bloquea resultados que no superan los controles críticos.
 
-Se presenta un dashboard institucional para usuarios no técnicos. 
+El Hito 3 se presenta mediante un dashboard institucional para usuarios no técnicos. Machine Learning podrá evaluarse en una etapa posterior, una vez definido un problema institucional concreto, con datos suficientes y validación metodológica.
+
 El Aglomerado 18 representa conjuntamente Santiago del Estero y La Banda. Los microdatos públicos no permiten separar ambas ciudades ni evaluar encuestadores o personal de carga.
 
 ## Indicadores
@@ -43,10 +60,14 @@ Pipeline-EPH-DGEyC/
 ├── src/pipeline.py                 Pipeline, validaciones y publicación segura
 ├── src/monitor_actualizaciones.py  Monitor y prevalidación de nuevas publicaciones
 ├── src/portal_admin.py             Lógica auxiliar del portal administrativo
-├── notebooks/app.py               Portal Streamlit (consulta + administración)
+├── src/visualizacion.py             Rangos, filtros temporales y comparaciones del portal
+├── portal/app.py                   Portal Streamlit (consulta + administración)
+├── notebooks/app.py                Lanzador compatible del despliegue histórico
 ├── notebooks/eda_eph_sde.py       Análisis técnico complementario
+├── notebooks/EDA_EPH_SDE.ipynb    EDA en Jupyter/Colab
 ├── tests/test_pipeline.py          Suite automatizada del ETL
 ├── tests/test_monitor_actualizaciones.py  Pruebas del monitor
+├── tests/test_visualizacion.py     Pruebas de rangos y filtros temporales
 ├── data/                           ZIP y TXT locales, excluidos de Git
 ├── results/                        Salidas locales, excluidas de Git
 ├── data_snapshot/                  Agregados validados para Streamlit Cloud
@@ -180,18 +201,22 @@ Las salidas se construyen en una carpeta temporal. Ante una falla crítica, el p
 Ejecución exacta desde la raíz:
 
 ```bash
-python -m streamlit run notebooks/app.py
+python -m streamlit run portal/app.py
 ```
 
 La versión 3.2 (con el ajuste 3.2.1 del calendario) transforma el dashboard en un portal de siete secciones: resumen ejecutivo, evolución laboral, ingresos, calendario, calidad y auditoría, documentación y descargas, y administración. Las vistas de consulta siguen usando `results/` únicamente si el último período es `VALIDADO` o `PUBLICADO`; en caso contrario conservan el último `data_snapshot/` validado.
 
 El área administrativa permite consultar INDEC, prevalidar una nueva publicación y revisar alertas sin usar la terminal. La incorporación final está bloqueada por defecto y requiere clave administrativa, `admin_enable_writes=true`, un reporte `LISTO_PARA_REVISION`, confirmación humana y la validación transaccional final del pipeline. Ver `docs/PORTAL_ADMINISTRACION.md`.
 
-Para Streamlit Cloud, configurar como archivo principal:
+Para nuevos despliegues de Streamlit Cloud, configurar como archivo principal:
 
 ```text
-notebooks/app.py
+portal/app.py
 ```
+
+Por compatibilidad, `notebooks/app.py` se conserva como un lanzador mínimo que ejecuta
+`portal/app.py`. De esta forma, el despliegue V3.2.1 ya configurado con la ruta histórica
+puede seguir funcionando sin cambios.
 
 En despliegues con almacenamiento efímero se recomienda mantener la publicación final deshabilitada y ejecutarla en infraestructura persistente de la Dirección.
 
@@ -223,7 +248,7 @@ Resultado automatizado de la versión 3.2.1: **68 tests aprobados**. Además, la
 ## Limitaciones y reporte anterior
 
 - Los indicadores se calculan a partir de microdatos públicos y no sustituyen procedimientos institucionales confirmados.
-
+- Los indicadores operativos de campo requieren bases internas y definiciones institucionales.
 - El archivo `docs/Reporte_Ejecutivo_EPH_SDE_4T2025.pdf` se conserva como antecedente, pero no se ofrece en el dashboard: utiliza los nombres y denominadores anteriores y contiene una línea futura que ya no representa el alcance del Hito 3. No existe una fuente editable equivalente en el repositorio.
 
 ## Fuente
