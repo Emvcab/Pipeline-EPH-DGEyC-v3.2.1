@@ -73,7 +73,7 @@ ESQUEMA_OBLIGATORIO_INDIVIDUAL = [
     "CODUSU", "NRO_HOGAR",
 ]
 ESQUEMA_OBLIGATORIO_HOGAR = ["AGLOMERADO", "REALIZADA", "CODUSU", "NRO_HOGAR"]
-ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO", "NIVEL_ED", "ADECOCUR"]
+ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO", "NIVEL_ED", "ADECOCUR", "PONDIIO"]
 
 TASAS_PRINCIPALES = [
     "tasa_actividad_oficial",
@@ -1083,7 +1083,7 @@ def guardar_trimestre(
         )
 
         calidad = reporte_calidad(
-            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "CH04", "CH06"]
+            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "PONDIIO", "CH04", "CH06", "NIVEL_ED", "ADECOCUR"]
         )
         ruta_calidad = staging / f"calidad_datos_SDE_{periodo}.csv"
         calidad.to_csv(ruta_calidad, index=False)

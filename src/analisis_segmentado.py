@@ -39,10 +39,10 @@ def _num(df: pd.DataFrame, columna: str) -> pd.Series:
     return pd.to_numeric(df[columna], errors="coerce")
 
 
-def _suma_pesos(df: pd.DataFrame) -> float:
-    if df.empty or "PONDERA" not in df.columns:
+def _suma_pesos(df: pd.DataFrame, ponderador: str = "PONDERA") -> float:
+    if df.empty or ponderador not in df.columns:
         return 0.0
-    pesos = pd.to_numeric(df["PONDERA"], errors="coerce")
+    pesos = pd.to_numeric(df[ponderador], errors="coerce")
     return float(pesos[pesos > 0].sum())
 
 
@@ -52,11 +52,13 @@ def _porcentaje(num: float, den: float) -> float | None:
     return round(num / den * 100, 2)
 
 
-def _promedio_ponderado(df: pd.DataFrame, variable: str) -> float | None:
-    if df.empty or variable not in df.columns or "PONDERA" not in df.columns:
+def _promedio_ponderado(
+    df: pd.DataFrame, variable: str, ponderador: str = "PONDERA"
+) -> float | None:
+    if df.empty or variable not in df.columns or ponderador not in df.columns:
         return None
     valores = pd.to_numeric(df[variable], errors="coerce")
-    pesos = pd.to_numeric(df["PONDERA"], errors="coerce")
+    pesos = pd.to_numeric(df[ponderador], errors="coerce")
     validos = valores.notna() & pesos.notna() & (pesos > 0)
     if not validos.any():
         return None
@@ -110,7 +112,7 @@ def _indicadores_grupo(
         "tasa_empleo": _porcentaje(ocup, poblacion),
         "tasa_desocupacion": _porcentaje(desocup, pea),
         "tasa_informalidad": informalidad,
-        "ingreso_promedio_ponderado_ocupados": _promedio_ponderado(ingresos, "P21"),
+        "ingreso_promedio_ponderado_ocupados": _promedio_ponderado(ingresos, "P21", "PONDIIO"),
     }
 
 
@@ -123,8 +125,9 @@ def generar_analisis_segmentado(
     - Edad: 14-29, 30-64 y 65 años y más.
     - Educación: personas de 14 años y más; NIVEL_ED/NIVELED 1..7.
     - Deciles: ADECOCUR (decil del ingreso de la ocupación principal dentro del
-      aglomerado), sólo ocupados con P21 > 0. Si ADECOCUR no está disponible no
-      se fabrican deciles alternativos.
+      aglomerado), sólo ocupados con P21 > 0. Para montos y expansión de ingreso
+      se usa PONDIIO, el ponderador específico de ingreso de la ocupación principal.
+      Si ADECOCUR o PONDIIO no están disponibles no se fabrican deciles alternativos.
     """
     periodo = f"{anio}T{trimestre}"
     if sde_ind.empty:
@@ -180,7 +183,7 @@ def generar_analisis_segmentado(
     # Decil del ingreso de la ocupación principal del aglomerado. Se utiliza la
     # variable construida por INDEC, no un qcut local que alteraría la metodología.
     col_decil = _columna(datos, "ADECOCUR")
-    if col_decil is not None and "P21" in datos.columns:
+    if col_decil is not None and "P21" in datos.columns and "PONDIIO" in datos.columns:
         estado = pd.to_numeric(datos["ESTADO"], errors="coerce")
         p21 = pd.to_numeric(datos["P21"], errors="coerce")
         decil = pd.to_numeric(datos[col_decil], errors="coerce")
@@ -197,12 +200,12 @@ def generar_analisis_segmentado(
                     "categoria": f"Decil {codigo}",
                     "universo": "Ocupados con P21 > 0; ADECOCUR del aglomerado",
                     "n_muestra": int(len(grupo)),
-                    "poblacion_expandida": int(round(_suma_pesos(grupo))),
+                    "poblacion_expandida": int(round(_suma_pesos(grupo, "PONDIIO"))),
                     "tasa_actividad": np.nan,
                     "tasa_empleo": np.nan,
                     "tasa_desocupacion": np.nan,
                     "tasa_informalidad": np.nan,
-                    "ingreso_promedio_ponderado_ocupados": _promedio_ponderado(grupo, "P21"),
+                    "ingreso_promedio_ponderado_ocupados": _promedio_ponderado(grupo, "P21", "PONDIIO"),
                 })
 
     return pd.DataFrame(filas)
