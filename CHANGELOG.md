@@ -9,6 +9,12 @@
 
 ## 3.3.0 — 2026-10-07
 
+### Corrección metodológica previa al reprocesamiento segmentado
+- Los promedios de `P21` de la nueva capa segmentada usan `PONDIIO`, el ponderador específico de ingreso de la ocupación principal publicado por INDEC.
+- La expansión de la dimensión `Decil de ingreso` también usa `PONDIIO`.
+- `PONDERA` se conserva para tasas laborales, informalidad y población general.
+- Si `PONDIIO` no está disponible, no se fabrican promedios ni deciles alternativos.
+
 ### Profundidad analítica — respuesta a devolución DPE
 - Se agrega `src/analisis_segmentado.py` para calcular brechas por sexo, edad y nivel educativo.
 - Las tasas específicas por sexo usan población de 14 años y más, siguiendo la presentación de INDEC.
