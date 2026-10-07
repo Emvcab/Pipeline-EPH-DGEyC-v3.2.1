@@ -35,7 +35,7 @@ Windows PowerShell:
 ```powershell
 $env:EPH_ADMIN_PASSWORD="una-clave-segura"
 $env:EPH_ADMIN_ENABLE_WRITES="1"
-python -m streamlit run notebooks/app.py
+python -m streamlit run portal/app.py
 ```
 
 Si se omite `EPH_ADMIN_ENABLE_WRITES`, el operador puede monitorear y prevalidar, pero no incorporar períodos al histórico desde la interfaz.

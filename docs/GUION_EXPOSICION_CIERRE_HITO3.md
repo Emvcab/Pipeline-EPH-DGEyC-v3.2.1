@@ -6,7 +6,7 @@
 Preparación previa (responsable: orador 3):
 
 - Abrir el dashboard 10 minutos antes; si la plataforma lo puso en pausa, reactivarlo para que cargue rápido durante la demo.
-- Tener de respaldo el dashboard corriendo en una computadora local (`python -m streamlit run notebooks/app.py`) por si falla la conexión.
+- Tener de respaldo el dashboard corriendo en una computadora local (`python -m streamlit run portal/app.py`) por si falla la conexión.
 - Dejar abierto en otra pestaña un archivo `.meta.json` del repositorio para mostrarlo sin buscarlo en vivo.
 
 ---

@@ -11,10 +11,14 @@ Este manual describe la operación técnica del sistema: instalación, ejecució
 
 ```text
 Pipeline-EPH-DGEyC/
-├── src/pipeline.py            Pipeline ETL, validaciones, estados y publicación
-├── notebooks/app.py           Dashboard Streamlit
-├── notebooks/eda_eph_sde.py   Análisis exploratorio complementario
-├── tests/test_pipeline.py     Suite automatizada (50 tests)
+├── src/pipeline.py              Pipeline ETL, validaciones, estados y publicación
+├── src/monitor_actualizaciones.py Monitor y prevalidación
+├── src/portal_admin.py           Operación administrativa del portal
+├── src/visualizacion.py          Filtros y utilidades de visualización
+├── portal/app.py                 Portal Streamlit
+├── scripts/eda_eph_sde.py       Script EDA local/VS Code
+├── notebooks/EDA_EPH_SDE.ipynb  Notebook EDA Jupyter/Colab
+├── tests/                        Suites automatizadas
 ├── requirements.txt           Dependencias
 ├── data/                      ZIP y TXT descargados (excluidos de Git)
 ├── results/                   Salidas locales del pipeline (excluidas de Git)
@@ -94,10 +98,10 @@ Resultado esperado en la versión 3.2.1: **68 passed**. Las pruebas escriben ún
 ## 5. Dashboard local
 
 ```bash
-python -m streamlit run notebooks/app.py
+python -m streamlit run portal/app.py
 ```
 
-Se abre en el navegador (por defecto en el puerto 8501). Selección de fuente de datos: si `results/` tiene un histórico cuyo último período figura `VALIDADO` o `PUBLICADO` en `estado_periodos.csv`, usa esos resultados; si no, usa `data_snapshot/`; si ninguna fuente está validada, lo informa y no muestra indicadores. En Streamlit Cloud, el archivo principal configurado es `notebooks/app.py`.
+Se abre en el navegador (por defecto en el puerto 8501). Selección de fuente de datos: si `results/` tiene un histórico cuyo último período figura `VALIDADO` o `PUBLICADO` en `estado_periodos.csv`, usa esos resultados; si no, usa `data_snapshot/`; si ninguna fuente está validada, lo informa y no muestra indicadores. El archivo principal de Streamlit es `portal/app.py`. Los despliegues que todavía apunten a la ruta histórica de la aplicación deben actualizar su **Main file path** a `portal/app.py`.
 
 ## 6. Archivos que genera
 
