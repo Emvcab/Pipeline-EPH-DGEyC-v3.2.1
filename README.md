@@ -60,11 +60,10 @@ Pipeline-EPH-DGEyC/
 ├── src/pipeline.py                 Pipeline, validaciones y publicación segura
 ├── src/monitor_actualizaciones.py  Monitor y prevalidación de nuevas publicaciones
 ├── src/portal_admin.py             Lógica auxiliar del portal administrativo
-├── src/visualizacion.py             Rangos, filtros temporales y comparaciones del portal
+├── src/visualizacion.py            Rangos, filtros temporales y comparaciones del portal
 ├── portal/app.py                   Portal Streamlit (consulta + administración)
-├── notebooks/app.py                Lanzador compatible del despliegue histórico
-├── notebooks/eda_eph_sde.py       Análisis técnico complementario
-├── notebooks/EDA_EPH_SDE.ipynb    EDA en Jupyter/Colab
+├── scripts/eda_eph_sde.py         Script EDA para ejecución local/VS Code
+├── notebooks/EDA_EPH_SDE.ipynb    Notebook EDA en Jupyter/Colab
 ├── tests/test_pipeline.py          Suite automatizada del ETL
 ├── tests/test_monitor_actualizaciones.py  Pruebas del monitor
 ├── tests/test_visualizacion.py     Pruebas de rangos y filtros temporales
@@ -214,9 +213,7 @@ Para nuevos despliegues de Streamlit Cloud, configurar como archivo principal:
 portal/app.py
 ```
 
-Por compatibilidad, `notebooks/app.py` se conserva como un lanzador mínimo que ejecuta
-`portal/app.py`. De esta forma, el despliegue V3.2.1 ya configurado con la ruta histórica
-puede seguir funcionando sin cambios.
+La aplicación Streamlit vive únicamente en `portal/app.py`. La carpeta `notebooks/` queda reservada exclusivamente para archivos Jupyter (`.ipynb`); los scripts Python auxiliares viven en `scripts/`.
 
 En despliegues con almacenamiento efímero se recomienda mantener la publicación final deshabilitada y ejecutarla en infraestructura persistente de la Dirección.
 

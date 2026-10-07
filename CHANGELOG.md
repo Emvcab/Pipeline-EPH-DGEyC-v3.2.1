@@ -1,8 +1,10 @@
 # Historial de cambios
 
 ### Mantenimiento de estructura del repositorio
-- El portal Streamlit se ubica ahora en `portal/app.py`, separado de los notebooks de análisis.
-- `notebooks/app.py` se mantiene como lanzador de compatibilidad para no romper despliegues existentes.
+- El portal Streamlit se ubica en `portal/app.py`; se elimina la antigua ubicación `notebooks/app.py`.
+- `notebooks/` queda reservado exclusivamente para notebooks Jupyter/Colab (`.ipynb`).
+- El script EDA local se mueve de `notebooks/eda_eph_sde.py` a `scripts/eda_eph_sde.py`.
+- Los despliegues existentes deben configurar `portal/app.py` como archivo principal.
 - No cambia el ETL, los indicadores, las validaciones ni la lógica administrativa.
 
 ## 3.3.0 — 2026-10-07
