@@ -1,5 +1,54 @@
 # Historial de cambios
 
+### Agregado — reporte PDF institucional por período
+- El Resumen ejecutivo permite descargar un PDF estático del período seleccionado.
+- El reporte incluye indicadores principales, comparación temporal, evolución reciente, ingresos nominales, brechas y perfiles cuando la salida segmentada está disponible, lecturas descriptivas y notas metodológicas.
+- El PDF se genera exclusivamente desde salidas agregadas validadas; no recalcula fórmulas ni accede a microdatos.
+- Si falta la salida segmentada, el reporte sigue disponible y lo informa sin fabricar desagregaciones.
+- Se incorpora `src/reporte_pdf.py`, `reportlab` como dependencia y pruebas automatizadas específicas de exportación.
+
+### Mejorado — interpretación descriptiva de brechas
+- La sección **Brechas y perfiles** incorpora una lectura automática y estrictamente descriptiva del período seleccionado.
+- Para sexo, edad y educación identifica categorías con valores máximos y mínimos del indicador elegido y expresa la diferencia en puntos porcentuales.
+- Para deciles dimensiona la distancia nominal entre extremos y aclara que la progresión es esperable por construcción de ADECOCUR.
+- Las lecturas no infieren causalidad ni significancia estadística y muestran el rango de tamaños muestrales disponible.
+
+### Mantenimiento de estructura del repositorio
+- El portal Streamlit se ubica en `portal/app.py`; se elimina la antigua ubicación `notebooks/app.py`.
+- `notebooks/` queda reservado exclusivamente para notebooks Jupyter/Colab (`.ipynb`).
+- El script EDA local se mueve de `notebooks/eda_eph_sde.py` a `scripts/eda_eph_sde.py`.
+- Los despliegues existentes deben configurar `portal/app.py` como archivo principal.
+- No cambia el ETL, los indicadores, las validaciones ni la lógica administrativa.
+
+## 3.3.0 — 2026-10-07
+
+### Corrección metodológica previa al reprocesamiento segmentado
+- Los promedios de `P21` de la nueva capa segmentada usan `PONDIIO`, el ponderador específico de ingreso de la ocupación principal publicado por INDEC.
+- La expansión de la dimensión `Decil de ingreso` también usa `PONDIIO`.
+- `PONDERA` se conserva para tasas laborales, informalidad y población general.
+- Si `PONDIIO` no está disponible, no se fabrican promedios ni deciles alternativos.
+
+### Profundidad analítica — respuesta a devolución DPE
+- Se agrega `src/analisis_segmentado.py` para calcular brechas por sexo, edad y nivel educativo.
+- Las tasas específicas por sexo usan población de 14 años y más, siguiendo la presentación de INDEC.
+- Se incorporan deciles de ingreso de la ocupación principal mediante `ADECOCUR` cuando está disponible.
+- El portal suma la sección **Brechas y perfiles** y mantiene advertencias sobre error muestral y alcance descriptivo.
+- Las salidas segmentadas son agregadas y pueden incorporarse al snapshot; los microdatos siguen fuera del snapshot.
+
+### Mejorado — visualización e interactividad temporal
+
+- El portal incorpora **Plotly** para los gráficos de evolución laboral e ingresos.
+- Los ejes verticales se ajustan al rango de los datos visibles en lugar de forzarse a cero cuando eso reduciría la legibilidad de las variaciones.
+- El Resumen ejecutivo permite elegir un **período de referencia** y un **período de comparación**.
+- Las métricas muestran diferencias descriptivas en puntos porcentuales entre los dos períodos elegidos.
+- Evolución laboral e Ingresos incorporan filtros temporales `Desde` / `Hasta`.
+- Se agrega `src/visualizacion.py` para aislar filtros y rangos de visualización de la lógica estadística del ETL.
+- Se agregan 6 pruebas nuevas; suite total: **74 tests aprobados**.
+- El motor ETL permanece en `3.2.1`; no se cambian fórmulas, validaciones críticas ni publicación transaccional.
+- Esta versión inicia la respuesta técnica a la devolución de la DPE; análisis por sexo, edad, educación, deciles, contexto territorial y exportación PDF quedan planificados como siguientes incrementos.
+
+---
+
 ## 3.2.1 — 2026-09-24
 
 ### Corregido — calendario y ejecución por lote

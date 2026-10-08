@@ -75,3 +75,21 @@ Todo CSV se acompaña por un archivo homónimo `.meta.json`. Incluye nombre, des
 - Los ingresos son nominales y requieren deflactación para comparaciones reales.
 - El Aglomerado 18 no permite separar Santiago Capital de La Banda.
 - `REALIZADA` en los microdatos públicos no permite medir por sí sola el rechazo de campo.
+
+## Salida `analisis_segmentado_SDE_AAAATn.csv` — V3.3
+
+| Campo | Descripción |
+|---|---|
+| `periodo` | Trimestre en formato `AAAATn`. |
+| `dimension` | Sexo, Edad, Nivel educativo o Decil de ingreso. |
+| `categoria` | Categoría analizada dentro de la dimensión. |
+| `universo` | Universo usado para el cálculo del segmento. |
+| `n_muestra` | Registros observados de la muestra en el segmento. |
+| `poblacion_expandida` | Población expandida mediante `PONDERA` para dimensiones laborales; en deciles de ingreso se utiliza `PONDIIO`. |
+| `tasa_actividad` | PEA expandida / población expandida del segmento. |
+| `tasa_empleo` | Ocupados expandidos / población expandida del segmento. |
+| `tasa_desocupacion` | Desocupados expandidos / PEA expandida del segmento. |
+| `tasa_informalidad` | Informales / ocupados con `EMPLEO` válido en el segmento. |
+| `ingreso_promedio_ponderado_ocupados` | Promedio ponderado de `P21` entre ocupados con ingreso positivo, usando `PONDIIO`. |
+
+Para la dimensión de deciles se utilizan `ADECOCUR` y `PONDIIO` cuando están disponibles. En esos registros las tasas laborales se dejan vacías porque la salida se centra en la distribución del ingreso de la ocupación principal.

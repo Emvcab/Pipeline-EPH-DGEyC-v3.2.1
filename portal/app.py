@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 
@@ -25,12 +26,53 @@ import monitor_actualizaciones as monitor
 import portal_admin
 import pipeline as core
 from pipeline import normalizar_estado, normalizar_periodo
+from visualizacion import filtrar_rango_periodos, rango_eje, variacion
+from interpretacion_brechas import lectura_deciles, lectura_dimension
+from reporte_pdf import generar_reporte_pdf
 
 
 DIR_RESULTADOS = RAIZ / "results"
 DIR_SNAPSHOT = RAIZ / "data_snapshot"
 DIR_DOCS = RAIZ / "docs"
 ESTADOS_VALIDOS = {"VALIDADO", "PUBLICADO"}
+PORTAL_VERSION = "3.3.0"
+
+
+# Colores consistentes para las categorías de la sección "Brechas y perfiles".
+# Se mantienen iguales aunque cambie el indicador seleccionado.
+COLORES_CATEGORIAS = {
+    "Varón": "#2563EB",
+    "Mujer": "#E11D48",
+    "14 a 29 años": "#2563EB",
+    "30 a 64 años": "#F59E0B",
+    "65 años y más": "#16A34A",
+    "Primario incompleto": "#2563EB",
+    "Primario completo": "#0891B2",
+    "Secundario incompleto": "#F59E0B",
+    "Secundario completo": "#EA580C",
+    "Superior/universitario incompleto": "#7C3AED",
+    "Superior/universitario completo": "#16A34A",
+    "Sin instrucción": "#64748B",
+}
+
+PALETA_CATEGORIAS = [
+    "#2563EB", "#E11D48", "#16A34A", "#F59E0B",
+    "#7C3AED", "#0891B2", "#EA580C", "#64748B",
+]
+
+# Escala secuencial para deciles: de menor a mayor ingreso.
+COLORES_DECILES = [
+    "#DBEAFE", "#BFDBFE", "#93C5FD", "#60A5FA", "#3B82F6",
+    "#2563EB", "#1D4ED8", "#1E40AF", "#1E3A8A", "#172554",
+]
+
+
+def colores_para_categorias(categorias: list[str]) -> list[str]:
+    """Asigna colores estables a categorías conocidas y una paleta al resto."""
+    colores: list[str] = []
+    for i, categoria in enumerate(categorias):
+        colores.append(COLORES_CATEGORIAS.get(str(categoria), PALETA_CATEGORIAS[i % len(PALETA_CATEGORIAS)]))
+    return colores
 
 
 def leer_json(ruta: Path) -> dict | None:
@@ -86,6 +128,74 @@ def formato_numero(valor: object, decimales: int = 0, prefijo: str = "") -> str:
 
 def formato_tasa(valor: object) -> str:
     return "No disponible" if valor is None or pd.isna(valor) else f"{float(valor):.2f}%"
+
+
+def delta_pp(actual: object, anterior: object, periodo_anterior: str | None) -> str | None:
+    """Formatea una variación en puntos porcentuales para ``st.metric``."""
+    cambio = variacion(actual, anterior)
+    if cambio is None or not periodo_anterior:
+        return None
+    return f"{cambio:+.2f} p.p. vs {periodo_anterior}"
+
+
+def grafico_series_interactivo(
+    datos: pd.DataFrame,
+    columnas: list[str],
+    etiquetas: dict[str, str],
+    titulo: str,
+    y_titulo: str,
+    *,
+    porcentaje: bool = False,
+    moneda: bool = False,
+) -> None:
+    """Muestra series Plotly con hover, zoom y eje Y ajustado a los datos visibles."""
+    disponibles = [c for c in columnas if c in datos.columns]
+    if not disponibles or datos.empty:
+        st.info("No hay datos suficientes para mostrar este gráfico.")
+        return
+
+    fig = go.Figure()
+    valores_eje: list[float] = []
+    for columna in disponibles:
+        serie = pd.to_numeric(datos[columna], errors="coerce")
+        valores_eje.extend(serie.dropna().astype(float).tolist())
+        if moneda:
+            hover = "%{x}<br>%{y:$,.0f}<extra>%{fullData.name}</extra>"
+        elif porcentaje:
+            hover = "%{x}<br>%{y:.2f}%<extra>%{fullData.name}</extra>"
+        else:
+            hover = "%{x}<br>%{y:,.2f}<extra>%{fullData.name}</extra>"
+        fig.add_trace(
+            go.Scatter(
+                x=datos["periodo"].astype(str),
+                y=serie,
+                mode="lines+markers",
+                name=etiquetas.get(columna, columna),
+                hovertemplate=hover,
+            )
+        )
+
+    rango = rango_eje(valores_eje)
+    if rango is not None and (porcentaje or moneda):
+        inferior, superior = rango
+        if porcentaje and inferior < 0:
+            inferior = 0.0
+        rango = (inferior, superior)
+
+    fig.update_layout(
+        title=titulo,
+        xaxis_title="Período",
+        yaxis_title=y_titulo,
+        hovermode="x unified",
+        legend_title_text="",
+        margin=dict(l=20, r=20, t=55, b=20),
+    )
+    fig.update_yaxes(range=list(rango) if rango is not None else None)
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={"displaylogo": False, "scrollZoom": True},
+    )
 
 
 def boton_descarga(ruta: Path, etiqueta: str, clave: str) -> None:
@@ -197,6 +307,7 @@ def mostrar_reporte_prevalidacion(reporte: dict) -> None:
 DIR_ACTIVO, USANDO_SNAPSHOT, DESCRIPCION_FUENTE = seleccionar_fuente()
 
 st.title("Mercado laboral en Santiago del Estero - La Banda")
+st.caption(f"Portal {PORTAL_VERSION} · motor ETL {core.PIPELINE_VERSION}")
 st.markdown("**Fuente:** Encuesta Permanente de Hogares — INDEC.")
 st.markdown("**Alcance territorial:** Aglomerado 18 — Santiago del Estero - La Banda.")
 st.caption(
@@ -243,6 +354,7 @@ if df.empty:
     st.error("No hay períodos con estado VALIDADO o PUBLICADO.")
     st.stop()
 
+periodos_disponibles = df["periodo"].astype(str).tolist()
 ultimo = df.iloc[-1]
 periodo_ultimo = str(ultimo["periodo"])
 estado_ultimo = estados.loc[estados["periodo"].astype(str) == periodo_ultimo].iloc[-1]
@@ -250,6 +362,7 @@ estado_ultimo = estados.loc[estados["periodo"].astype(str) == periodo_ultimo].il
 (
     tab_resumen,
     tab_evolucion,
+    tab_brechas,
     tab_ingresos,
     tab_calendario,
     tab_calidad,
@@ -258,6 +371,7 @@ estado_ultimo = estados.loc[estados["periodo"].astype(str) == periodo_ultimo].il
 ) = st.tabs([
     "Resumen ejecutivo",
     "Evolución laboral",
+    "Brechas y perfiles",
     "Ingresos",
     "Calendario",
     "Calidad y auditoría",
@@ -279,57 +393,189 @@ with tab_resumen:
     )
 
     st.subheader("Indicadores principales")
+    s1, s2 = st.columns(2)
+    with s1:
+        periodo_referencia = st.selectbox(
+            "Período de referencia",
+            periodos_disponibles,
+            index=len(periodos_disponibles) - 1,
+            key="resumen_periodo_referencia",
+            help="Permite consultar cualquier trimestre validado sin alterar el histórico.",
+        )
+    indice_ref = periodos_disponibles.index(periodo_referencia)
+    indice_comparacion_default = max(0, indice_ref - 1)
+    with s2:
+        periodo_comparacion = st.selectbox(
+            "Comparar con",
+            periodos_disponibles,
+            index=indice_comparacion_default,
+            key=f"resumen_periodo_comparacion_{periodo_referencia}",
+            help="Las diferencias se muestran en puntos porcentuales respecto del período elegido.",
+        )
+    referencia = df.iloc[indice_ref]
+    comparacion = df[df["periodo"].astype(str) == periodo_comparacion].iloc[-1]
+
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Tasa de actividad oficial", formato_tasa(ultimo.get("tasa_actividad_oficial")))
-    c2.metric("Tasa de empleo oficial", formato_tasa(ultimo.get("tasa_empleo_oficial")))
-    c3.metric("Tasa de desocupación", formato_tasa(ultimo.get("tasa_desocupacion")))
-    c4.metric("Proporción inactiva total", formato_tasa(ultimo.get("proporcion_inactiva_total")))
+    c1.metric(
+        "Tasa de actividad oficial",
+        formato_tasa(referencia.get("tasa_actividad_oficial")),
+        delta=delta_pp(
+            referencia.get("tasa_actividad_oficial"),
+            comparacion.get("tasa_actividad_oficial"),
+            periodo_comparacion,
+        ),
+    )
+    c2.metric(
+        "Tasa de empleo oficial",
+        formato_tasa(referencia.get("tasa_empleo_oficial")),
+        delta=delta_pp(
+            referencia.get("tasa_empleo_oficial"),
+            comparacion.get("tasa_empleo_oficial"),
+            periodo_comparacion,
+        ),
+    )
+    c3.metric(
+        "Tasa de desocupación",
+        formato_tasa(referencia.get("tasa_desocupacion")),
+        delta=delta_pp(
+            referencia.get("tasa_desocupacion"),
+            comparacion.get("tasa_desocupacion"),
+            periodo_comparacion,
+        ),
+        delta_color="inverse",
+    )
+    c4.metric(
+        "Proporción inactiva total",
+        formato_tasa(referencia.get("proporcion_inactiva_total")),
+        delta=delta_pp(
+            referencia.get("proporcion_inactiva_total"),
+            comparacion.get("proporcion_inactiva_total"),
+            periodo_comparacion,
+        ),
+        delta_color="inverse",
+    )
     st.caption(
-        "La proporción inactiva total es complementaria: 100 menos la tasa de actividad oficial."
+        "Las variaciones se expresan en puntos porcentuales respecto del período elegido para comparación. "
+        "Son comparaciones descriptivas, no pruebas de significancia estadística."
     )
 
     c5, c6, c7, c8 = st.columns(4)
-    c5.metric("Personas en muestra", formato_numero(ultimo.get("n_personas_muestra")))
-    c6.metric("Hogares en muestra", formato_numero(ultimo.get("n_hogares_muestra")))
-    c7.metric("Población total expandida", formato_numero(ultimo.get("poblacion_expandida_total")))
-    c8.metric("Tasa de informalidad", formato_tasa(ultimo.get("tasa_informalidad")))
-    if pd.isna(ultimo.get("tasa_informalidad")):
+    c5.metric("Personas en muestra", formato_numero(referencia.get("n_personas_muestra")))
+    c6.metric("Hogares en muestra", formato_numero(referencia.get("n_hogares_muestra")))
+    c7.metric(
+        "Población total expandida",
+        formato_numero(referencia.get("poblacion_expandida_total")),
+    )
+    c8.metric("Tasa de informalidad", formato_tasa(referencia.get("tasa_informalidad")))
+    if pd.isna(referencia.get("tasa_informalidad")):
         st.warning("La informalidad no está disponible porque la variable EMPLEO no existe en ese período.")
     st.info(
         "Advertencia territorial: los microdatos públicos identifican el aglomerado conjunto y "
         "no permiten separar Santiago Capital de La Banda."
     )
 
+    st.subheader("Reporte estático")
+    ruta_segmentado_pdf = DIR_ACTIVO / f"analisis_segmentado_SDE_{periodo_referencia}.csv"
+    segmentado_pdf = leer_csv(ruta_segmentado_pdf)
+    try:
+        pdf_reporte = generar_reporte_pdf(
+            df,
+            periodo_referencia,
+            periodo_comparacion=periodo_comparacion,
+            segmentado=segmentado_pdf,
+            fuente_descripcion=DESCRIPCION_FUENTE,
+        )
+        st.download_button(
+            "Descargar reporte PDF del período",
+            data=pdf_reporte,
+            file_name=f"Reporte_EPH_SDE_{periodo_referencia}.pdf",
+            mime="application/pdf",
+            key=f"pdf_reporte_{periodo_referencia}_{periodo_comparacion}",
+        )
+        if segmentado_pdf is None or segmentado_pdf.empty:
+            st.caption(
+                "El PDF se generará con indicadores generales. La sección segmentada se incorpora "
+                "automáticamente cuando existe la salida agregada del período."
+            )
+        else:
+            st.caption(
+                "Incluye indicadores principales, evolución reciente, ingresos, brechas y perfiles, "
+                "lecturas descriptivas y notas metodológicas."
+            )
+    except (ValueError, OSError) as error:
+        st.warning(f"No se pudo preparar el reporte PDF: {error}")
+
 
 with tab_evolucion:
     st.header("Evolución laboral")
-    st.subheader("Actividad y empleo oficiales")
-    columnas_conjuntas = [
-        col for col in ["tasa_actividad_oficial", "tasa_empleo_oficial"] if col in df.columns
-    ]
-    if columnas_conjuntas:
-        st.line_chart(df.set_index("periodo")[columnas_conjuntas])
-    else:
-        st.info("Las tasas oficiales todavía no están disponibles.")
+    st.caption(
+        "Gráficos interactivos: puede pasar el cursor, hacer zoom y seleccionar el rango temporal. "
+        "El eje vertical se ajusta a los datos visibles y no se fuerza a comenzar en cero cuando eso "
+        "ocultaría variaciones relevantes."
+    )
+
+    r1, r2 = st.columns(2)
+    with r1:
+        desde_evol = st.selectbox(
+            "Desde", periodos_disponibles, index=0, key="evol_desde"
+        )
+    with r2:
+        hasta_evol = st.selectbox(
+            "Hasta",
+            periodos_disponibles,
+            index=len(periodos_disponibles) - 1,
+            key="evol_hasta",
+        )
+    df_evol = filtrar_rango_periodos(df, desde_evol, hasta_evol)
+    if periodos_disponibles.index(desde_evol) > periodos_disponibles.index(hasta_evol):
+        st.info("El rango estaba invertido; se ordenó automáticamente para la visualización.")
+
+    grafico_series_interactivo(
+        df_evol,
+        ["tasa_actividad_oficial", "tasa_empleo_oficial"],
+        {
+            "tasa_actividad_oficial": "Actividad",
+            "tasa_empleo_oficial": "Empleo",
+        },
+        "Actividad y empleo oficiales",
+        "Porcentaje",
+        porcentaje=True,
+    )
 
     izquierda, derecha = st.columns(2)
     with izquierda:
-        st.subheader("Desocupación")
-        if "tasa_desocupacion" in df.columns:
-            st.line_chart(df.set_index("periodo")[["tasa_desocupacion"]])
-        else:
-            st.info("La tasa de desocupación no está disponible.")
+        grafico_series_interactivo(
+            df_evol,
+            ["tasa_desocupacion"],
+            {"tasa_desocupacion": "Desocupación"},
+            "Desocupación",
+            "Porcentaje",
+            porcentaje=True,
+        )
     with derecha:
-        st.subheader("Proporción inactiva total")
-        if "proporcion_inactiva_total" in df.columns:
-            st.line_chart(df.set_index("periodo")[["proporcion_inactiva_total"]])
-        else:
-            st.info("El indicador complementario no está disponible.")
+        grafico_series_interactivo(
+            df_evol,
+            ["proporcion_inactiva_total"],
+            {"proporcion_inactiva_total": "Inactividad total"},
+            "Proporción inactiva total",
+            "Porcentaje",
+            porcentaje=True,
+        )
 
     st.subheader("Informalidad")
-    informalidad = df[["periodo", "tasa_informalidad"]].dropna() if "tasa_informalidad" in df else pd.DataFrame()
+    if "tasa_informalidad" in df_evol.columns:
+        informalidad = df_evol[["periodo", "tasa_informalidad"]].dropna()
+    else:
+        informalidad = pd.DataFrame()
     if len(informalidad) >= 2:
-        st.line_chart(informalidad.set_index("periodo"))
+        grafico_series_interactivo(
+            informalidad,
+            ["tasa_informalidad"],
+            {"tasa_informalidad": "Informalidad"},
+            "Evolución de la informalidad",
+            "Porcentaje",
+            porcentaje=True,
+        )
     else:
         st.info("No hay suficientes períodos con EMPLEO disponible para mostrar una evolución.")
     st.caption(
@@ -339,34 +585,209 @@ with tab_evolucion:
     )
 
 
+with tab_brechas:
+    st.header("Brechas y perfiles")
+    st.caption(
+        "Esta sección profundiza el análisis de los microdatos por sexo, edad, nivel educativo "
+        "y deciles de ingreso cuando esas variables están disponibles. Las diferencias son "
+        "descriptivas y deben interpretarse considerando el error muestral de la EPH."
+    )
+    periodo_brechas = st.selectbox(
+        "Período para análisis segmentado",
+        periodos_disponibles,
+        index=len(periodos_disponibles) - 1,
+        key="brechas_periodo",
+    )
+    ruta_brechas = DIR_ACTIVO / f"analisis_segmentado_SDE_{periodo_brechas}.csv"
+    brechas = leer_csv(ruta_brechas)
+    if brechas is None or brechas.empty:
+        st.info(
+            "Este período todavía no tiene salida segmentada publicada. Para generarla hay que "
+            "reprocesar el trimestre con la V3.3 y luego actualizar explícitamente el snapshot."
+        )
+    else:
+        dimensiones = brechas["dimension"].dropna().astype(str).unique().tolist()
+        dimension = st.selectbox(
+            "Dimensión de análisis",
+            dimensiones,
+            key=f"brechas_dimension_{periodo_brechas}",
+        )
+        vista = brechas[brechas["dimension"].astype(str) == dimension].copy()
+
+        if dimension == "Decil de ingreso":
+            vista["_orden_decil"] = pd.to_numeric(
+                vista["categoria"].astype(str).str.extract(r"(\d+)")[0],
+                errors="coerce",
+            )
+            vista = (
+                vista.sort_values("_orden_decil")
+                .drop(columns="_orden_decil")
+                .reset_index(drop=True)
+            )
+            columnas_tabla = [
+                "categoria", "n_muestra", "poblacion_expandida",
+                "ingreso_promedio_ponderado_ocupados",
+            ]
+            tabla = vista[columnas_tabla].copy().rename(columns={
+                "categoria": "Decil",
+                "n_muestra": "Muestra",
+                "poblacion_expandida": "Población expandida",
+                "ingreso_promedio_ponderado_ocupados": "Ingreso medio ocupación principal",
+            })
+        else:
+            columnas_tabla = [
+                "categoria", "n_muestra", "poblacion_expandida", "tasa_actividad",
+                "tasa_empleo", "tasa_desocupacion", "tasa_informalidad",
+                "ingreso_promedio_ponderado_ocupados",
+            ]
+            columnas_tabla = [c for c in columnas_tabla if c in vista.columns]
+            tabla = vista[columnas_tabla].copy()
+
+        st.dataframe(tabla, width="stretch", hide_index=True)
+
+        if dimension != "Decil de ingreso":
+            metrica = st.selectbox(
+                "Indicador para comparar",
+                ["tasa_actividad", "tasa_empleo", "tasa_desocupacion", "tasa_informalidad"],
+                format_func=lambda x: {
+                    "tasa_actividad": "Tasa de actividad",
+                    "tasa_empleo": "Tasa de empleo",
+                    "tasa_desocupacion": "Tasa de desocupación",
+                    "tasa_informalidad": "Tasa de informalidad",
+                }[x],
+                key=f"brechas_metrica_{periodo_brechas}_{dimension}",
+            )
+            graf = vista[["categoria", metrica]].copy()
+            graf[metrica] = pd.to_numeric(graf[metrica], errors="coerce")
+            graf = graf.dropna()
+            if not graf.empty:
+                categorias_graf = graf["categoria"].astype(str).tolist()
+                valores = graf[metrica].astype(float).tolist()
+                colores = colores_para_categorias(categorias_graf)
+
+                # Gráfico de puntos: permite ajustar el eje sin exagerar visualmente
+                # las diferencias como ocurriría con barras truncadas.
+                fig = go.Figure(go.Scatter(
+                    x=categorias_graf,
+                    y=valores,
+                    mode="markers+text",
+                    marker=dict(size=20, color=colores, line=dict(width=1, color="white")),
+                    text=[f"{valor:.2f}%" for valor in valores],
+                    textposition="top center",
+                    hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>",
+                    showlegend=False,
+                ))
+                rango = rango_eje(valores)
+                fig.update_layout(
+                    title=f"{dimension} · {periodo_brechas}",
+                    xaxis_title="", yaxis_title="Porcentaje",
+                    margin=dict(l=20, r=20, t=55, b=20),
+                )
+                if rango is not None:
+                    fig.update_yaxes(range=[max(0, rango[0]), rango[1]])
+                st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+        else:
+            graf = vista[["categoria", "ingreso_promedio_ponderado_ocupados"]].copy()
+            graf["ingreso_promedio_ponderado_ocupados"] = pd.to_numeric(
+                graf["ingreso_promedio_ponderado_ocupados"], errors="coerce"
+            )
+            graf = graf.dropna()
+            if not graf.empty:
+                categorias_decil = graf["categoria"].astype(str).tolist()
+                colores_decil = [
+                    COLORES_DECILES[min(max(int(str(cat).split()[-1]) - 1, 0), 9)]
+                    for cat in categorias_decil
+                ]
+                fig = go.Figure(go.Bar(
+                    x=categorias_decil,
+                    y=graf["ingreso_promedio_ponderado_ocupados"],
+                    marker_color=colores_decil,
+                    hovertemplate="%{x}<br>$%{y:,.0f}<extra></extra>",
+                ))
+                fig.update_layout(
+                    title=f"Ingreso medio de la ocupación principal por decil · {periodo_brechas}",
+                    xaxis_title="", yaxis_title="Pesos corrientes",
+                    margin=dict(l=20, r=20, t=55, b=20),
+                    showlegend=False,
+                )
+                st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+
+        st.subheader("Lectura descriptiva del período")
+        if dimension == "Decil de ingreso":
+            mensajes_lectura = lectura_deciles(vista)
+        else:
+            mensajes_lectura = lectura_dimension(vista, dimension, metrica)
+        st.info("\n\n".join(f"• {mensaje}" for mensaje in mensajes_lectura))
+
+        st.caption(
+            "Sexo: tasas específicas para población de 14 años y más. Los deciles utilizan "
+            "ADECOCUR, la escala decílica del ingreso de la ocupación principal construida por "
+            "INDEC para el aglomerado. Si esa variable no existe, no se fabrican deciles locales."
+        )
+
 with tab_ingresos:
     st.header("Ingresos nominales")
+    periodo_ingreso = st.selectbox(
+        "Período de referencia para ingresos",
+        periodos_disponibles,
+        index=len(periodos_disponibles) - 1,
+        key="ingresos_periodo_referencia",
+    )
+    indice_ingreso = periodos_disponibles.index(periodo_ingreso)
+    fila_ingreso = df.iloc[indice_ingreso]
+    anterior_ingreso = df.iloc[indice_ingreso - 1] if indice_ingreso > 0 else None
+    periodo_anterior_ingreso = (
+        str(anterior_ingreso["periodo"]) if anterior_ingreso is not None else None
+    )
+
     c1, c2, c3 = st.columns(3)
     c1.metric(
         "Ingreso promedio ponderado",
-        formato_numero(ultimo.get("ingreso_promedio_ponderado_observado"), prefijo="$"),
+        formato_numero(fila_ingreso.get("ingreso_promedio_ponderado_observado"), prefijo="$"),
     )
     c2.metric(
         "Ingreso mediano",
-        formato_numero(ultimo.get("ingreso_mediano_observado"), prefijo="$"),
+        formato_numero(fila_ingreso.get("ingreso_mediano_observado"), prefijo="$"),
     )
     c3.metric(
         "No respuesta de ingresos",
-        formato_tasa(ultimo.get("tasa_no_respuesta_ingresos_ocupados")),
+        formato_tasa(fila_ingreso.get("tasa_no_respuesta_ingresos_ocupados")),
+        delta=delta_pp(
+            fila_ingreso.get("tasa_no_respuesta_ingresos_ocupados"),
+            None if anterior_ingreso is None else anterior_ingreso.get("tasa_no_respuesta_ingresos_ocupados"),
+            periodo_anterior_ingreso,
+        ),
+        delta_color="inverse",
     )
     st.warning(
         "Los ingresos son nominales y no representan directamente variaciones del poder "
         "adquisitivo. Para comparaciones reales se requiere deflactación."
     )
-    columnas_ingresos = [
-        col for col in [
-            "ingreso_promedio_ponderado_observado", "ingreso_mediano_observado"
-        ] if col in df.columns
-    ]
-    if columnas_ingresos:
-        st.line_chart(df.set_index("periodo")[columnas_ingresos])
-    else:
-        st.info("No hay una serie de ingresos disponible.")
+
+    ir1, ir2 = st.columns(2)
+    with ir1:
+        desde_ing = st.selectbox(
+            "Serie desde", periodos_disponibles, index=0, key="ing_desde"
+        )
+    with ir2:
+        hasta_ing = st.selectbox(
+            "Serie hasta",
+            periodos_disponibles,
+            index=len(periodos_disponibles) - 1,
+            key="ing_hasta",
+        )
+    df_ing = filtrar_rango_periodos(df, desde_ing, hasta_ing)
+    grafico_series_interactivo(
+        df_ing,
+        ["ingreso_promedio_ponderado_observado", "ingreso_mediano_observado"],
+        {
+            "ingreso_promedio_ponderado_observado": "Promedio ponderado",
+            "ingreso_mediano_observado": "Mediana",
+        },
+        "Evolución de ingresos nominales observados",
+        "Pesos corrientes",
+        moneda=True,
+    )
 
 
 with tab_calendario:

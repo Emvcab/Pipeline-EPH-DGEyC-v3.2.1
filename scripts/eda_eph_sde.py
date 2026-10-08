@@ -3,8 +3,8 @@ EDA — EPH Santiago del Estero · período disponible
 Práctica Profesionalizante II · ITSE 2026
 Grupo: Achaval · Cabaña · Constantinidi · Gomez · Pinto Villegas
 
-Versión script para VSCode/local. Requiere historico_SDE.csv en la carpeta.
-Uso:  python eda_eph_sde.py
+Versión script para VSCode/local. Busca el histórico en las rutas habituales del proyecto.
+Uso desde la raíz del repositorio:  python scripts/eda_eph_sde.py
 Genera 4 gráficos PNG.
 """
 
@@ -39,7 +39,7 @@ Genera 4 gráficos PNG.
 # ────────────────────────────────────────────────────────────────────
 # ## 1. Preparación del entorno y carga de datos
 
-# Este notebook funciona tanto en Google Colab como en VSCode/Jupyter local.
+# Este script puede ejecutarse en local y conserva compatibilidad con entornos tipo Colab/Jupyter.
 # Detecta el entorno automáticamente.
 
 import sys

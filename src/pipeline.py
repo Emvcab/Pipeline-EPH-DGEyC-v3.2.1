@@ -27,6 +27,8 @@ from typing import Any, Optional
 
 import pandas as pd
 
+from analisis_segmentado import generar_analisis_segmentado
+
 try:
     import requests
 except ImportError:  # permite validar snapshots agregados sin dependencias de red
@@ -71,7 +73,7 @@ ESQUEMA_OBLIGATORIO_INDIVIDUAL = [
     "CODUSU", "NRO_HOGAR",
 ]
 ESQUEMA_OBLIGATORIO_HOGAR = ["AGLOMERADO", "REALIZADA", "CODUSU", "NRO_HOGAR"]
-ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO"]
+ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO", "NIVEL_ED", "ADECOCUR", "PONDIIO"]
 
 TASAS_PRINCIPALES = [
     "tasa_actividad_oficial",
@@ -140,6 +142,14 @@ DICCIONARIO_COLUMNAS = {
         "Proporción observada con REALIZADA igual a 0; no equivale a rechazo de campo"
     ),
     "fecha_procesamiento": "Fecha y hora de procesamiento",
+    "dimension": "Dimensión del análisis segmentado",
+    "categoria": "Categoría dentro de la dimensión analizada",
+    "universo": "Universo poblacional usado para el indicador segmentado",
+    "n_muestra": "Cantidad de registros de muestra del segmento",
+    "poblacion_expandida": "Población expandida del segmento mediante PONDERA",
+    "tasa_actividad": "PEA expandida del segmento / población expandida del segmento × 100",
+    "tasa_empleo": "Ocupados expandidos del segmento / población expandida del segmento × 100",
+    "ingreso_promedio_ponderado_ocupados": "Promedio ponderado de P21 entre ocupados con ingreso positivo del segmento",
     "fuente": "Fuente de los datos",
     "columna": "Variable evaluada",
     "nulos": "Cantidad de valores nulos",
@@ -1073,7 +1083,7 @@ def guardar_trimestre(
         )
 
         calidad = reporte_calidad(
-            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "CH04", "CH06"]
+            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "PONDIIO", "CH04", "CH06", "NIVEL_ED", "ADECOCUR"]
         )
         ruta_calidad = staging / f"calidad_datos_SDE_{periodo}.csv"
         calidad.to_csv(ruta_calidad, index=False)
@@ -1083,6 +1093,19 @@ def guardar_trimestre(
                 ruta_calidad, calidad,
                 f"Calidad de variables clave del período {periodo}.",
                 anio, trimestre, "Calidad", "EN_REVISION",
+                archivo_origen=f"EPH_usu_{trimestre}_Trim_{anio}_txt.zip",
+            ),
+        )
+
+        analisis_segmentado = generar_analisis_segmentado(sde_ind, anio, trimestre)
+        ruta_segmentado = staging / f"analisis_segmentado_SDE_{periodo}.csv"
+        analisis_segmentado.to_csv(ruta_segmentado, index=False)
+        guardar_metadatos(
+            ruta_segmentado,
+            generar_metadatos(
+                ruta_segmentado, analisis_segmentado,
+                f"Indicadores segmentados por sexo, edad, nivel educativo y deciles disponibles para {periodo}.",
+                anio, trimestre, "Analítica", "EN_REVISION",
                 archivo_origen=f"EPH_usu_{trimestre}_Trim_{anio}_txt.zip",
             ),
         )
@@ -1293,6 +1316,20 @@ def preparar_snapshot_desde_historico(
 
         origen_validaciones = validaciones_existentes or destino
         if origen_validaciones.exists():
+            for ruta_segmentada in origen_validaciones.glob("analisis_segmentado_SDE_*.csv"):
+                copia_segmentada = staging / ruta_segmentada.name
+                shutil.copy2(ruta_segmentada, copia_segmentada)
+                periodo_segmentado = ruta_segmentada.stem.replace("analisis_segmentado_SDE_", "")
+                guardar_metadatos_genericos(
+                    copia_segmentada,
+                    f"Análisis segmentado validado para {periodo_segmentado}.",
+                    "Analítica",
+                    periodo=periodo_segmentado,
+                    anio=int(periodo_segmentado[:4]),
+                    trimestre=int(periodo_segmentado[-1]),
+                    estado_validacion="VALIDADO",
+                    archivo_origen=ruta_segmentada.name,
+                )
             for ruta in origen_validaciones.glob("validacion_esquema_*.json"):
                 if ruta.name.endswith(".meta.json"):
                     continue

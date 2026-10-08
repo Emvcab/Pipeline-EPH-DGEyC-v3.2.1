@@ -22,9 +22,9 @@ Esta evolución responde a observaciones de uso institucional sin modificar las 
 - comparación directa entre dos trimestres mediante diferencias en puntos porcentuales;
 - filtros `Desde` / `Hasta` para las series laborales y de ingresos;
 - utilidades de visualización separadas en `src/visualizacion.py`;
-- suite automatizada ampliada a **74 tests**.
+- suite automatizada ampliada con pruebas de visualización, segmentación, interpretación y exportación PDF.
 
-La V3.3.0 es el primer incremento de una mejora más amplia. Los cruces por sexo, edad, nivel educativo, deciles de ingreso, reportes PDF y comparaciones territoriales requieren una etapa analítica adicional y se documentan en `docs/PLAN_V3_3_DEVOLUCION_DPE.md`.
+La V3.3.0 incorpora además cruces por sexo, edad y nivel educativo, deciles de ingreso cuando INDEC publica las variables necesarias, lectura descriptiva de brechas y **exportación de un reporte PDF institucional por período**. Las comparaciones territoriales externas quedan fuera del cierre por requerir una fuente oficial compatible y validación metodológica específica.
 
 ## Alcance
 
@@ -61,6 +61,7 @@ Pipeline-EPH-DGEyC/
 ├── src/monitor_actualizaciones.py  Monitor y prevalidación de nuevas publicaciones
 ├── src/portal_admin.py             Lógica auxiliar del portal administrativo
 ├── src/visualizacion.py            Rangos, filtros temporales y comparaciones del portal
+├── src/reporte_pdf.py              Generación del reporte PDF institucional
 ├── portal/app.py                   Portal Streamlit (consulta + administración)
 ├── scripts/eda_eph_sde.py         Script EDA para ejecución local/VS Code
 ├── notebooks/EDA_EPH_SDE.ipynb    Notebook EDA en Jupyter/Colab
@@ -251,3 +252,8 @@ Resultado automatizado de la versión 3.2.1: **68 tests aprobados**. Además, la
 ## Fuente
 
 Encuesta Permanente de Hogares — Instituto Nacional de Estadística y Censos (INDEC), República Argentina: <https://www.indec.gob.ar>.
+
+
+## Análisis segmentado V3.3
+
+La V3.3 agrega una capa analítica sobre el ETL 3.2.1 para explorar brechas por sexo, edad y nivel educativo, además de ingresos por deciles cuando `ADECOCUR` y el ponderador específico `PONDIIO` están disponibles. El portal muestra estas salidas en **Brechas y perfiles**. Son estimaciones descriptivas de la EPH y deben leerse junto con las consideraciones de error muestral.

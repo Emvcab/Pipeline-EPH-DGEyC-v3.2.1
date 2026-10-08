@@ -36,7 +36,7 @@ El comando excluye microdatos y no despliega la aplicación en la nube.
 ## Abrir el dashboard
 
 ```bash
-python -m streamlit run notebooks/app.py
+python -m streamlit run portal/app.py
 ```
 
 Si `results/` no tiene un último período validado, la aplicación usa `data_snapshot/` y muestra una explicación.
@@ -82,7 +82,7 @@ Los reportes quedan en `results/monitor_actualizaciones/`. Si la prevalidación 
 Ejecutar:
 
 ```bash
-python -m streamlit run notebooks/app.py
+python -m streamlit run portal/app.py
 ```
 
 La pestaña **Calendario** muestra fechas esperadas y estados locales; no confirma por sí sola la disponibilidad del ZIP en INDEC. El botón **Consultar INDEC ahora** del área administrativa realiza esa verificación. La pestaña **Administración** permite consultar INDEC y prevalidar un trimestre. La incorporación final está bloqueada hasta configurar credenciales y habilitar escrituras. Ver `PORTAL_ADMINISTRACION.md`.

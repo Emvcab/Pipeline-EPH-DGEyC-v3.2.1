@@ -45,7 +45,7 @@ Además, las tasas principales ahora se calculan sobre la población total, el m
 
 ## Archivos entregables
 
-1. Repositorio completo con el pipeline (`src/pipeline.py`) y el dashboard (`notebooks/app.py`).
+1. Repositorio completo con el pipeline (`src/pipeline.py`) y el dashboard (`portal/app.py`).
 2. Dashboard publicado en línea (enlace arriba).
 3. `data_snapshot/`: histórico validado, indicadores por trimestre, estados, validaciones, manifiesto y metadatos.
 4. Documentación en `docs/`: informe final del hito, manual de usuario del dashboard, manual técnico, metodología, diccionario de datos, guía de uso y arquitectura.

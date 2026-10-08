@@ -16,7 +16,7 @@
 
 El proyecto automatiza el procesamiento de los microdatos públicos de la Encuesta Permanente de Hogares (EPH) del INDEC para el Aglomerado 18, que reúne a las ciudades de Santiago del Estero y La Banda. A partir de los archivos que el INDEC publica cada trimestre, el sistema descarga, valida, integra y calcula indicadores del mercado laboral, mantiene un histórico acumulado de 12 períodos (2023T1 a 2025T4) y los presenta en un dashboard pensado para usuarios no técnicos de la DGEyC.
 
-El producto tiene dos componentes: el pipeline (`src/pipeline.py`), que produce los archivos de datos con sus metadatos y controles, y el dashboard (`notebooks/app.py`), que muestra únicamente resultados que superaron la validación.
+El producto tiene dos componentes: el pipeline (`src/pipeline.py`), que produce los archivos de datos con sus metadatos y controles, y el dashboard (`portal/app.py`), que muestra únicamente resultados que superaron la validación.
 
 ## 2. Problema institucional abordado
 

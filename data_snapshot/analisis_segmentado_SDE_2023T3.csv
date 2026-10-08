@@ -1,0 +1,23 @@
+periodo,dimension,categoria,universo,n_muestra,poblacion_expandida,tasa_actividad,tasa_empleo,tasa_desocupacion,tasa_informalidad,ingreso_promedio_ponderado_ocupados
+2023T3,Sexo,Varón,Población de 14 años y más,615,157400,69.29,68.75,0.78,,109191.0
+2023T3,Sexo,Mujer,Población de 14 años y más,703,173431,45.63,45.63,0.0,,88878.0
+2023T3,Edad,14 a 29 años,Grupo de edad,492,108212,40.4,40.18,0.57,,69139.0
+2023T3,Edad,30 a 64 años,Grupo de edad,670,178213,77.64,77.3,0.43,,108441.0
+2023T3,Edad,65 años y más,Grupo de edad,156,44406,13.74,13.74,0.0,,148052.0
+2023T3,Nivel educativo,Primario incompleto,Población de 14 años y más,63,16319,40.58,39.67,2.23,,64233.0
+2023T3,Nivel educativo,Primario completo,Población de 14 años y más,236,65515,56.96,56.79,0.31,,70709.0
+2023T3,Nivel educativo,Secundario incompleto,Población de 14 años y más,319,69821,40.86,40.86,0.0,,76976.0
+2023T3,Nivel educativo,Secundario completo,Población de 14 años y más,315,75054,67.95,67.17,1.15,,105473.0
+2023T3,Nivel educativo,Superior/universitario incompleto,Población de 14 años y más,214,50912,49.02,49.02,0.0,,117943.0
+2023T3,Nivel educativo,Superior/universitario completo,Población de 14 años y más,154,48599,77.85,77.85,0.0,,137723.0
+2023T3,Nivel educativo,Sin instrucción,Población de 14 años y más,17,4611,41.94,41.94,0.0,,54668.0
+2023T3,Decil de ingreso,Decil 1,Ocupados con P21 > 0; ADECOCUR del aglomerado,66,18788,,,,,27393.0
+2023T3,Decil de ingreso,Decil 2,Ocupados con P21 > 0; ADECOCUR del aglomerado,75,18742,,,,,42096.0
+2023T3,Decil de ingreso,Decil 3,Ocupados con P21 > 0; ADECOCUR del aglomerado,67,18584,,,,,53029.0
+2023T3,Decil de ingreso,Decil 4,Ocupados con P21 > 0; ADECOCUR del aglomerado,86,18847,,,,,66995.0
+2023T3,Decil de ingreso,Decil 5,Ocupados con P21 > 0; ADECOCUR del aglomerado,75,18734,,,,,80073.0
+2023T3,Decil de ingreso,Decil 6,Ocupados con P21 > 0; ADECOCUR del aglomerado,75,18284,,,,,91005.0
+2023T3,Decil de ingreso,Decil 7,Ocupados con P21 > 0; ADECOCUR del aglomerado,78,18663,,,,,110865.0
+2023T3,Decil de ingreso,Decil 8,Ocupados con P21 > 0; ADECOCUR del aglomerado,70,18742,,,,,137353.0
+2023T3,Decil de ingreso,Decil 9,Ocupados con P21 > 0; ADECOCUR del aglomerado,68,18754,,,,,165359.0
+2023T3,Decil de ingreso,Decil 10,Ocupados con P21 > 0; ADECOCUR del aglomerado,53,18489,,,,,233715.0

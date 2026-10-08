@@ -45,7 +45,7 @@ Los metadatos se generan automáticamente para cada CSV y salida de auditoría. 
 
 ## Dashboard y escalabilidad
 
-`notebooks/app.py` usa rutas relativas. Prioriza `results/` sólo si el último período está validado; de lo contrario usa `data_snapshot/`. Los gráficos se construyen desde CSV agregados.
+`portal/app.py` es la única aplicación Streamlit y usa rutas relativas. La carpeta `notebooks/` contiene únicamente notebooks Jupyter/Colab (`.ipynb`), mientras que los scripts auxiliares de análisis se ubican en `scripts/`. El portal prioriza `results/` sólo si el último período está validado; de lo contrario usa `data_snapshot/`. Los gráficos se construyen desde CSV agregados.
 
 Las cargas se distinguen como Crítica, Analítica, Calidad, Auditoría, Operativa, Visualización y Disponibilización. En una etapa posterior pueden agregarse métricas por etapa sin modificar las fórmulas públicas.
 
@@ -106,4 +106,4 @@ El workflow `.github/workflows/monitor-eph.yml` ejecuta semanalmente sólo la co
 
 ## Capa de portal (v3.2)
 
-`notebooks/app.py` funciona como interfaz de consulta y operación. `src/portal_admin.py` no duplica cálculos: expone el calendario del pipeline, reportes del monitor y una publicación asistida que delega nuevamente en `procesar_trimestre()` y `publicar_snapshot_validado()`. De esta forma, la UI no crea un segundo ETL ni una segunda regla de negocio.
+`portal/app.py` funciona como interfaz de consulta y operación. `src/portal_admin.py` no duplica cálculos: expone el calendario del pipeline, reportes del monitor y una publicación asistida que delega nuevamente en `procesar_trimestre()` y `publicar_snapshot_validado()`. De esta forma, la UI no crea un segundo ETL ni una segunda regla de negocio.
