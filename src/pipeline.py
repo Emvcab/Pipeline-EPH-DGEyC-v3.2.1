@@ -71,7 +71,7 @@ ESQUEMA_OBLIGATORIO_INDIVIDUAL = [
     "CODUSU", "NRO_HOGAR",
 ]
 ESQUEMA_OBLIGATORIO_HOGAR = ["AGLOMERADO", "REALIZADA", "CODUSU", "NRO_HOGAR"]
-ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO"]
+ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO", "PONDIIO"]
 
 TASAS_PRINCIPALES = [
     "tasa_actividad_oficial",
@@ -112,7 +112,7 @@ FORMULAS_INDICADORES = {
         "ocupados expandidos con EMPLEO=2 / ocupados expandidos con EMPLEO en {1,2} × 100"
     ),
     "ingreso_promedio_ponderado_observado": (
-        "suma(P21 × PONDERA) / suma(PONDERA), para ocupados con P21 > 0"
+        "suma(P21 × PONDIIO) / suma(PONDIIO), para ocupados con P21 > 0"
     ),
     "tasa_no_respuesta_ingresos_ocupados": (
         "ocupados de muestra con P21=-9 / ocupados de muestra × 100"
@@ -152,9 +152,10 @@ DICCIONARIO_COLUMNAS = {
     "ingreso_promedio_observado": "Promedio simple del ingreso nominal de la ocupación principal",
     "ingreso_mediano_observado": "Mediana del ingreso nominal de la ocupación principal",
     "ingreso_promedio_ponderado_observado": (
-        "Promedio ponderado del ingreso nominal de la ocupación principal"
+        "Promedio ponderado del ingreso nominal de la ocupación principal mediante PONDIIO"
     ),
     "n_ocupados_con_ingreso_valido": "Ocupados de muestra con P21 mayor que cero",
+    "n_ocupados_con_pondiio_valido": "Ocupados con P21 positivo y PONDIIO válido y positivo",
     "n_ocupados_sin_respuesta_ingreso": "Ocupados de muestra con P21 igual a -9",
     "tasa_no_respuesta_ingresos_ocupados": "No respuesta de ingreso entre ocupados de muestra",
     "hogares_encuestados": "Hogares publicados con REALIZADA igual a 1",
@@ -185,7 +186,7 @@ DICCIONARIO_COLUMNAS = {
 }
 
 UNIDADES = {
-    **{col: "porcentaje" for col in TASAS_PRINCIPALES + TASAS_10_MAS},
+    **{col: "porcentaje" for col in TASAS_PRINCIPALES + TASAS_14_MAS + TASAS_10_MAS},
     "tasa_informalidad": "porcentaje",
     "tasa_no_respuesta_ingresos_ocupados": "porcentaje",
     "tasa_no_respuesta_hogar": "porcentaje",
@@ -331,9 +332,9 @@ def mostrar_calendario(directorio: Path = DIR_RESULTADOS) -> None:
     """
     log.info("\nCALENDARIO DE PUBLICACIONES EPH-INDEC · AGLOMERADO 18")
     log.info(
-    "  (fechas estimadas; el calendario no verifica en línea al INDEC; "
-    "verificar disponibilidad con el monitor)"
-)
+        "  (fechas estimadas; el calendario no verifica en línea al INDEC; "
+        "verificar disponibilidad con el monitor)"
+    )
     for anio in ANIOS + [max(ANIOS) + 1]:
         for trimestre in TRIMESTRES:
             mes, anio_publicacion = fecha_publicacion_esperada(anio, trimestre)
@@ -584,24 +585,41 @@ def calcular_indicadores(
             )
 
     ocupados["P21"] = pd.to_numeric(ocupados["P21"], errors="coerce")
-    ocupados["PONDERA"] = pd.to_numeric(ocupados["PONDERA"], errors="coerce")
-    ingresos_validos = ocupados[(ocupados["P21"] > 0) & (ocupados["PONDERA"] > 0)]
+    ingresos_observados = ocupados[ocupados["P21"] > 0].copy()
     no_respuesta_ingresos = int((ocupados["P21"] == -9).sum())
+
     ingreso_simple = (
-        round(float(ingresos_validos["P21"].mean()), 0) if not ingresos_validos.empty else None
+        round(float(ingresos_observados["P21"].mean()), 0)
+        if not ingresos_observados.empty else None
     )
     ingreso_mediano = (
-        round(float(ingresos_validos["P21"].median()), 0) if not ingresos_validos.empty else None
+        round(float(ingresos_observados["P21"].median()), 0)
+        if not ingresos_observados.empty else None
     )
+
+    # P21 debe ponderarse con PONDIIO, el ponderador específico del ingreso
+    # de la ocupación principal. No se usa PONDERA como sustituto silencioso.
     ingreso_ponderado = None
-    if not ingresos_validos.empty:
-        suma_pesos = ingresos_validos["PONDERA"].sum(min_count=1)
-        if pd.notna(suma_pesos) and suma_pesos > 0:
-            ingreso_ponderado = round(
-                float((ingresos_validos["P21"] * ingresos_validos["PONDERA"]).sum())
-                / float(suma_pesos),
-                0,
-            )
+    n_ocupados_con_pondiio_valido = 0
+    if "PONDIIO" in ocupados.columns:
+        ocupados["PONDIIO"] = pd.to_numeric(ocupados["PONDIIO"], errors="coerce")
+        ingresos_ponderables = ocupados[
+            (ocupados["P21"] > 0) & (ocupados["PONDIIO"] > 0)
+        ].copy()
+        n_ocupados_con_pondiio_valido = len(ingresos_ponderables)
+        if not ingresos_ponderables.empty:
+            suma_pesos = ingresos_ponderables["PONDIIO"].sum(min_count=1)
+            if pd.notna(suma_pesos) and suma_pesos > 0:
+                ingreso_ponderado = round(
+                    float(
+                        (
+                            ingresos_ponderables["P21"]
+                            * ingresos_ponderables["PONDIIO"]
+                        ).sum()
+                    )
+                    / float(suma_pesos),
+                    0,
+                )
 
     realizada = pd.to_numeric(sde_hog["REALIZADA"], errors="coerce")
     return {
@@ -635,7 +653,8 @@ def calcular_indicadores(
         "ingreso_promedio_observado": ingreso_simple,
         "ingreso_mediano_observado": ingreso_mediano,
         "ingreso_promedio_ponderado_observado": ingreso_ponderado,
-        "n_ocupados_con_ingreso_valido": len(ingresos_validos),
+        "n_ocupados_con_ingreso_valido": len(ingresos_observados),
+        "n_ocupados_con_pondiio_valido": n_ocupados_con_pondiio_valido,
         "n_ocupados_sin_respuesta_ingreso": no_respuesta_ingresos,
         "tasa_no_respuesta_ingresos_ocupados": porcentaje(
             no_respuesta_ingresos, len(ocupados)
@@ -803,9 +822,13 @@ def generar_metadatos(
         "filtros_aplicados": [
             "AGLOMERADO = 18",
             "P21 > 0 para estadísticas de ingresos",
-            "PONDERA válida y positiva para promedios ponderados de ingresos",
+            "PONDIIO válida y positiva para el promedio ponderado de P21",
         ],
         "ponderador": "PONDERA",
+        "ponderadores": {
+            "tasas_laborales_y_expansiones": "PONDERA",
+            "ingreso_ocupacion_principal_P21": "PONDIIO",
+        },
         "cantidad_nulos": {col: int(df[col].isna().sum()) for col in variables},
         "codigos_especiales": {"-9": "no respuesta", "-8": "no sabe", "-7": "otro especial"},
         "advertencias_metodologicas": advertencias,
@@ -1026,6 +1049,14 @@ def validar_publicacion(
     desempleo_calculable = pea <= 0 or indicadores.get("tasa_desocupacion") is not None
     empleo_disponible = "EMPLEO" in sde_ind.columns
     informalidad_correcta = empleo_disponible or pd.isna(indicadores.get("tasa_informalidad"))
+
+    pondiio_disponible = "PONDIIO" in sde_ind.columns
+    ingreso_ponderado = indicadores.get("ingreso_promedio_ponderado_observado")
+    hay_ingresos_observados = indicadores.get("n_ocupados_con_ingreso_valido", 0) > 0
+    ponderacion_ingreso_correcta = (
+        pondiio_disponible
+        and (not hay_ingresos_observados or ingreso_ponderado is not None)
+    )
     aglomerado_ind = (
         "AGLOMERADO" in sde_ind.columns
         and AGLOMERADO_SDE in pd.to_numeric(sde_ind["AGLOMERADO"], errors="coerce").values
@@ -1053,6 +1084,11 @@ def validar_publicacion(
                  "Todos los CSV y metadatos requeridos deben existir y no estar vacíos."),
         _control("informalidad_no_disponible", informalidad_correcta,
                  "Si EMPLEO no existe, la informalidad debe permanecer nula."),
+        _control(
+            "ponderador_ingreso_pondiio",
+            ponderacion_ingreso_correcta,
+            "P21 debe ponderarse con PONDIIO; no se permite sustituirlo por PONDERA.",
+        ),
     ]
     errores = [c["detalle"] for c in controles if c["critico"] and not c["cumple"]]
     return {
@@ -1119,7 +1155,7 @@ def guardar_trimestre(
         )
 
         calidad = reporte_calidad(
-            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "CH04", "CH06"]
+            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "PONDIIO", "CH04", "CH06"]
         )
         ruta_calidad = staging / f"calidad_datos_SDE_{periodo}.csv"
         calidad.to_csv(ruta_calidad, index=False)

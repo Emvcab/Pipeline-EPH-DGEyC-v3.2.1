@@ -52,6 +52,7 @@ def datos_individuales_mock() -> pd.DataFrame:
     return pd.DataFrame({
         "AGLOMERADO": [18] * 6,
         "PONDERA": [100, 150, 200, 100, 150, 100],
+        "PONDIIO": [100, 150, 200, 100, 150, 100],
         "ESTADO": [1, 1, 2, 3, 3, 4],
         "EMPLEO": [1, 2, 0, 0, 0, 0],
         "P21": [500000, 700000, 0, 0, 0, 0],
