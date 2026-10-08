@@ -27,8 +27,6 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from analisis_segmentado import generar_analisis_segmentado
-
 try:
     import requests
 except ImportError:  # permite validar snapshots agregados sin dependencias de red
@@ -73,7 +71,7 @@ ESQUEMA_OBLIGATORIO_INDIVIDUAL = [
     "CODUSU", "NRO_HOGAR",
 ]
 ESQUEMA_OBLIGATORIO_HOGAR = ["AGLOMERADO", "REALIZADA", "CODUSU", "NRO_HOGAR"]
-ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO", "NIVEL_ED", "ADECOCUR", "PONDIIO"]
+ESQUEMA_OPCIONAL_INDIVIDUAL = ["EMPLEO"]
 
 TASAS_PRINCIPALES = [
     "tasa_actividad_oficial",
@@ -87,6 +85,12 @@ TASAS_10_MAS = [
     "tasa_inactividad_10_mas",
 ]
 
+TASAS_14_MAS = [
+    "tasa_actividad_14_mas",
+    "tasa_empleo_14_mas",
+    "tasa_desocupacion_14_mas",
+]
+
 FORMULAS_INDICADORES = {
     "tasa_actividad_oficial": "PEA expandida / población total expandida × 100",
     "tasa_empleo_oficial": "ocupados expandidos / población total expandida × 100",
@@ -95,6 +99,15 @@ FORMULAS_INDICADORES = {
     "tasa_actividad_10_mas": "PEA expandida / población de 10 años y más expandida × 100",
     "tasa_empleo_10_mas": "ocupados expandidos / población de 10 años y más expandida × 100",
     "tasa_inactividad_10_mas": "inactivos expandidos / población de 10 años y más expandida × 100",
+    "tasa_actividad_14_mas": (
+        "PEA de 14 años y más expandida / población de 14 años y más expandida × 100"
+    ),
+    "tasa_empleo_14_mas": (
+        "ocupados de 14 años y más expandidos / población de 14 años y más expandida × 100"
+    ),
+    "tasa_desocupacion_14_mas": (
+        "desocupados de 14 años y más expandidos / PEA de 14 años y más expandida × 100"
+    ),
     "tasa_informalidad": (
         "ocupados expandidos con EMPLEO=2 / ocupados expandidos con EMPLEO en {1,2} × 100"
     ),
@@ -115,6 +128,10 @@ DICCIONARIO_COLUMNAS = {
     "n_hogares_muestra": "Hogares de la muestra del aglomerado",
     "poblacion_expandida_total": "Población total expandida mediante PONDERA",
     "poblacion_expandida_mayor10": "Población de 10 años y más expandida mediante PONDERA",
+    "poblacion_expandida_14_mas": "Población de 14 años y más expandida mediante PONDERA",
+    "pea_expandida_14_mas": "PEA de 14 años y más expandida mediante PONDERA",
+    "ocupados_expandidos_14_mas": "Personas ocupadas de 14 años y más expandidas mediante PONDERA",
+    "desocupados_expandidos_14_mas": "Personas desocupadas de 14 años y más expandidas mediante PONDERA",
     "pea_expandida": "Población Económicamente Activa expandida",
     "ocupados_expandidos": "Personas ocupadas expandidas",
     "desocupados_expandidos": "Personas desocupadas expandidas",
@@ -125,9 +142,12 @@ DICCIONARIO_COLUMNAS = {
     "proporcion_inactiva_total": (
         "Indicador complementario: población fuera de la PEA sobre población total"
     ),
-    "tasa_actividad_10_mas": "Tasa específica de actividad de la población de 10 años y más",
-    "tasa_empleo_10_mas": "Tasa específica de empleo de la población de 10 años y más",
-    "tasa_inactividad_10_mas": "Tasa específica de inactividad de la población de 10 años y más",
+    "tasa_actividad_10_mas": "Tasa específica complementaria de referencia histórica para población de 10 años y más",
+    "tasa_empleo_10_mas": "Tasa específica complementaria de referencia histórica para población de 10 años y más",
+    "tasa_inactividad_10_mas": "Tasa específica complementaria de referencia histórica para población de 10 años y más",
+    "tasa_actividad_14_mas": "Tasa específica de actividad de la población de 14 años y más",
+    "tasa_empleo_14_mas": "Tasa específica de empleo de la población de 14 años y más",
+    "tasa_desocupacion_14_mas": "Tasa específica de desocupación de la población de 14 años y más",
     "tasa_informalidad": "Proporción de ocupados sin registro; nula si EMPLEO no está disponible",
     "ingreso_promedio_observado": "Promedio simple del ingreso nominal de la ocupación principal",
     "ingreso_mediano_observado": "Mediana del ingreso nominal de la ocupación principal",
@@ -142,14 +162,6 @@ DICCIONARIO_COLUMNAS = {
         "Proporción observada con REALIZADA igual a 0; no equivale a rechazo de campo"
     ),
     "fecha_procesamiento": "Fecha y hora de procesamiento",
-    "dimension": "Dimensión del análisis segmentado",
-    "categoria": "Categoría dentro de la dimensión analizada",
-    "universo": "Universo poblacional usado para el indicador segmentado",
-    "n_muestra": "Cantidad de registros de muestra del segmento",
-    "poblacion_expandida": "Población expandida del segmento mediante PONDERA",
-    "tasa_actividad": "PEA expandida del segmento / población expandida del segmento × 100",
-    "tasa_empleo": "Ocupados expandidos del segmento / población expandida del segmento × 100",
-    "ingreso_promedio_ponderado_ocupados": "Promedio ponderado de P21 entre ocupados con ingreso positivo del segmento",
     "fuente": "Fuente de los datos",
     "columna": "Variable evaluada",
     "nulos": "Cantidad de valores nulos",
@@ -313,13 +325,15 @@ def mostrar_calendario(directorio: Path = DIR_RESULTADOS) -> None:
     El calendario NO consulta al INDEC: combina el estado registrado localmente
     con la fecha de publicación esperada. Por eso distingue:
       - estado registrado  -> resultado real de una corrida del pipeline
-      - SIN PROCESAR       -> la fecha esperada ya fue alcanzada, pero no existe
-                              un estado local; verificar disponibilidad con el monitor
-                              antes de ejecutar el pipeline
+      - SIN PROCESAR       -> según el calendario ya debería estar publicado,
+                              pero todavía no se corrió el pipeline para ese período
       - FUTURO             -> aún no corresponde su publicación
     """
     log.info("\nCALENDARIO DE PUBLICACIONES EPH-INDEC · AGLOMERADO 18")
-    log.info("  (fechas estimadas; el calendario no verifica en línea al INDEC)")
+    log.info(
+    "  (fechas estimadas; el calendario no verifica en línea al INDEC; "
+    "verificar disponibilidad con el monitor)"
+)
     for anio in ANIOS + [max(ANIOS) + 1]:
         for trimestre in TRIMESTRES:
             mes, anio_publicacion = fecha_publicacion_esperada(anio, trimestre)
@@ -329,7 +343,7 @@ def mostrar_calendario(directorio: Path = DIR_RESULTADOS) -> None:
                 if registrado == "PENDIENTE":
                     etiqueta += " (corrida iniciada y no terminada: reprocesar)"
             elif estado_trimestre(anio, trimestre, directorio) == "PENDIENTE":
-                etiqueta = "SIN PROCESAR (fecha esperada alcanzada: verificar disponibilidad con el monitor)"
+                etiqueta = "SIN PROCESAR (ya debería estar publicado: ejecutar el pipeline)"
             else:
                 etiqueta = "FUTURO"
             log.info(f"  {anio}T{trimestre}: {mes} {anio_publicacion} · {etiqueta}")
@@ -528,6 +542,14 @@ def calcular_indicadores(
     estado = pd.to_numeric(sde_ind["ESTADO"], errors="coerce")
     edad = pd.to_numeric(sde_ind["CH06"], errors="coerce")
     mayores10 = sde_ind[edad >= 10]
+
+    # Universo específico utilizado para comparaciones con publicaciones actuales del INDEC.
+    mayores14 = sde_ind[edad >= 14]
+    pea14 = sde_ind[(edad >= 14) & estado.isin([1, 2])]
+    ocupados14 = sde_ind[(edad >= 14) & (estado == 1)]
+    desocupados14 = sde_ind[(edad >= 14) & (estado == 2)]
+
+    # Universo general de los indicadores principales.
     pea = sde_ind[estado.isin([1, 2])]
     ocupados = sde_ind[estado == 1].copy()
     desocupados = sde_ind[estado == 2]
@@ -535,6 +557,10 @@ def calcular_indicadores(
 
     p_pob = _suma_ponderada(sde_ind)
     p_may10 = _suma_ponderada(mayores10)
+    p_may14 = _suma_ponderada(mayores14)
+    p_pea14 = _suma_ponderada(pea14)
+    p_ocup14 = _suma_ponderada(ocupados14)
+    p_des14 = _suma_ponderada(desocupados14)
     p_pea = _suma_ponderada(pea)
     p_ocup = _suma_ponderada(ocupados)
     p_des = _suma_ponderada(desocupados)
@@ -587,6 +613,10 @@ def calcular_indicadores(
         "n_hogares_muestra": len(sde_hog),
         "poblacion_expandida_total": int(p_pob),
         "poblacion_expandida_mayor10": int(p_may10),
+        "poblacion_expandida_14_mas": int(p_may14),
+        "pea_expandida_14_mas": int(p_pea14),
+        "ocupados_expandidos_14_mas": int(p_ocup14),
+        "desocupados_expandidos_14_mas": int(p_des14),
         "pea_expandida": int(p_pea),
         "ocupados_expandidos": int(p_ocup),
         "desocupados_expandidos": int(p_des),
@@ -598,6 +628,9 @@ def calcular_indicadores(
         "tasa_actividad_10_mas": porcentaje(p_pea, p_may10),
         "tasa_empleo_10_mas": porcentaje(p_ocup, p_may10),
         "tasa_inactividad_10_mas": porcentaje(p_inact, p_may10),
+        "tasa_actividad_14_mas": porcentaje(p_pea14, p_may14),
+        "tasa_empleo_14_mas": porcentaje(p_ocup14, p_may14),
+        "tasa_desocupacion_14_mas": porcentaje(p_des14, p_pea14),
         "tasa_informalidad": tasa_informalidad,
         "ingreso_promedio_observado": ingreso_simple,
         "ingreso_mediano_observado": ingreso_mediano,
@@ -666,9 +699,12 @@ def migrar_historico(df: pd.DataFrame) -> pd.DataFrame:
     columnas_prioritarias = [
         "anio", "trimestre", "periodo", "aglomerado", "n_personas_muestra",
         "n_hogares_muestra", "poblacion_expandida_total", "poblacion_expandida_mayor10",
+        "poblacion_expandida_14_mas", "pea_expandida_14_mas",
+        "ocupados_expandidos_14_mas", "desocupados_expandidos_14_mas",
         "pea_expandida", "ocupados_expandidos", "desocupados_expandidos",
         "inactivos_expandidos", "tasa_actividad_oficial", "tasa_empleo_oficial",
-        "tasa_desocupacion", "proporcion_inactiva_total", "tasa_actividad_10_mas",
+        "tasa_desocupacion", "proporcion_inactiva_total", "tasa_actividad_14_mas",
+        "tasa_empleo_14_mas", "tasa_desocupacion_14_mas", "tasa_actividad_10_mas",
         "tasa_empleo_10_mas", "tasa_inactividad_10_mas", "tasa_informalidad",
     ]
     restantes = [col for col in hist.columns if col not in columnas_prioritarias]
@@ -975,7 +1011,7 @@ def validar_publicacion(
 ) -> dict:
     """Ejecuta controles críticos antes de promover una nueva salida."""
     periodo = indicadores["periodo"]
-    tasas = TASAS_PRINCIPALES + TASAS_10_MAS + ["tasa_informalidad"]
+    tasas = TASAS_PRINCIPALES + TASAS_14_MAS + TASAS_10_MAS + ["tasa_informalidad"]
     valores_tasas = [indicadores.get(tasa) for tasa in tasas]
     tasas_en_rango = all(
         valor is None or pd.isna(valor) or 0 <= float(valor) <= 100 for valor in valores_tasas
@@ -1083,7 +1119,7 @@ def guardar_trimestre(
         )
 
         calidad = reporte_calidad(
-            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "PONDIIO", "CH04", "CH06", "NIVEL_ED", "ADECOCUR"]
+            sde_ind, ["ESTADO", "EMPLEO", "P21", "PONDERA", "CH04", "CH06"]
         )
         ruta_calidad = staging / f"calidad_datos_SDE_{periodo}.csv"
         calidad.to_csv(ruta_calidad, index=False)
@@ -1093,19 +1129,6 @@ def guardar_trimestre(
                 ruta_calidad, calidad,
                 f"Calidad de variables clave del período {periodo}.",
                 anio, trimestre, "Calidad", "EN_REVISION",
-                archivo_origen=f"EPH_usu_{trimestre}_Trim_{anio}_txt.zip",
-            ),
-        )
-
-        analisis_segmentado = generar_analisis_segmentado(sde_ind, anio, trimestre)
-        ruta_segmentado = staging / f"analisis_segmentado_SDE_{periodo}.csv"
-        analisis_segmentado.to_csv(ruta_segmentado, index=False)
-        guardar_metadatos(
-            ruta_segmentado,
-            generar_metadatos(
-                ruta_segmentado, analisis_segmentado,
-                f"Indicadores segmentados por sexo, edad, nivel educativo y deciles disponibles para {periodo}.",
-                anio, trimestre, "Analítica", "EN_REVISION",
                 archivo_origen=f"EPH_usu_{trimestre}_Trim_{anio}_txt.zip",
             ),
         )
@@ -1316,20 +1339,6 @@ def preparar_snapshot_desde_historico(
 
         origen_validaciones = validaciones_existentes or destino
         if origen_validaciones.exists():
-            for ruta_segmentada in origen_validaciones.glob("analisis_segmentado_SDE_*.csv"):
-                copia_segmentada = staging / ruta_segmentada.name
-                shutil.copy2(ruta_segmentada, copia_segmentada)
-                periodo_segmentado = ruta_segmentada.stem.replace("analisis_segmentado_SDE_", "")
-                guardar_metadatos_genericos(
-                    copia_segmentada,
-                    f"Análisis segmentado validado para {periodo_segmentado}.",
-                    "Analítica",
-                    periodo=periodo_segmentado,
-                    anio=int(periodo_segmentado[:4]),
-                    trimestre=int(periodo_segmentado[-1]),
-                    estado_validacion="VALIDADO",
-                    archivo_origen=ruta_segmentada.name,
-                )
             for ruta in origen_validaciones.glob("validacion_esquema_*.json"):
                 if ruta.name.endswith(".meta.json"):
                     continue
