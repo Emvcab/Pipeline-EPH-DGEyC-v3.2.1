@@ -36,9 +36,9 @@ La EPH pública del proyecto representa el Aglomerado 18 y no debe presentarse c
 
 No se incorporará una comparación territorial hasta verificar que sea metodológicamente comparable.
 
-## Incremento 4 — reporte estático
+## Incremento 4 — reporte estático · implementado
 
-Generar un PDF por período con:
+El portal genera un PDF por período con:
 
 - indicadores principales;
 - comparaciones temporales;
@@ -47,7 +47,7 @@ Generar un PDF por período con:
 - notas de calidad;
 - contexto metodológico y fuente.
 
-El PDF será un producto de salida del portal; no reemplazará el histórico ni las validaciones del pipeline.
+El PDF es un producto de salida del portal; no reemplaza el histórico ni las validaciones del pipeline. Si falta una salida segmentada, el reporte no fabrica desagregaciones y conserva sólo la evidencia disponible.
 
 ## Incremento 5 — preguntas de negocio
 
@@ -70,4 +70,7 @@ La interfaz puede cambiar filtros y períodos de análisis; no debe cambiar sile
 - Ingreso medio por decil de ocupación principal usando `ADECOCUR` cuando existe.
 - Nueva sección del portal: **Brechas y perfiles**.
 
-Pendiente: comparaciones territoriales externas, reporte PDF y análisis interpretativo contextual.
+Implementado: análisis interpretativo descriptivo y reporte PDF institucional. Pendiente para una evolución futura: comparaciones territoriales externas, sujetas a validación metodológica.
+
+## Interpretación descriptiva incorporada
+La sección `Brechas y perfiles` agrega una lectura automática de máximos, mínimos y diferencias observadas. Esta capa se limita deliberadamente a describir resultados: no atribuye causas ni presenta las diferencias como estadísticamente significativas sin una estimación formal del error muestral.

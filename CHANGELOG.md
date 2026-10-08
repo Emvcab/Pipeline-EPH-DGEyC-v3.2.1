@@ -1,5 +1,18 @@
 # Historial de cambios
 
+### Agregado — reporte PDF institucional por período
+- El Resumen ejecutivo permite descargar un PDF estático del período seleccionado.
+- El reporte incluye indicadores principales, comparación temporal, evolución reciente, ingresos nominales, brechas y perfiles cuando la salida segmentada está disponible, lecturas descriptivas y notas metodológicas.
+- El PDF se genera exclusivamente desde salidas agregadas validadas; no recalcula fórmulas ni accede a microdatos.
+- Si falta la salida segmentada, el reporte sigue disponible y lo informa sin fabricar desagregaciones.
+- Se incorpora `src/reporte_pdf.py`, `reportlab` como dependencia y pruebas automatizadas específicas de exportación.
+
+### Mejorado — interpretación descriptiva de brechas
+- La sección **Brechas y perfiles** incorpora una lectura automática y estrictamente descriptiva del período seleccionado.
+- Para sexo, edad y educación identifica categorías con valores máximos y mínimos del indicador elegido y expresa la diferencia en puntos porcentuales.
+- Para deciles dimensiona la distancia nominal entre extremos y aclara que la progresión es esperable por construcción de ADECOCUR.
+- Las lecturas no infieren causalidad ni significancia estadística y muestran el rango de tamaños muestrales disponible.
+
 ### Mantenimiento de estructura del repositorio
 - El portal Streamlit se ubica en `portal/app.py`; se elimina la antigua ubicación `notebooks/app.py`.
 - `notebooks/` queda reservado exclusivamente para notebooks Jupyter/Colab (`.ipynb`).

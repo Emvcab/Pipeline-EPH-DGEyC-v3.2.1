@@ -1,0 +1,24 @@
+{
+  "nombre_archivo": "analisis_segmentado_SDE_2025T2.csv",
+  "descripcion": "Análisis segmentado validado para 2025T2.",
+  "clasificacion_load": "Analítica",
+  "fuente": "Encuesta Permanente de Hogares - microdatos públicos",
+  "organismo_productor": "Instituto Nacional de Estadística y Censos (INDEC)",
+  "url_origen": "https://www.indec.gob.ar/ftp/cuadros/menusuperior/eph/",
+  "aglomerado_codigo": 18,
+  "aglomerado_nombre": "Santiago del Estero - La Banda",
+  "periodo": "2025T2",
+  "anio": 2025,
+  "trimestre": 2,
+  "fecha_hora_generacion": "2026-10-07T19:51:01",
+  "version_pipeline": "3.2.1",
+  "estado_validacion": "VALIDADO",
+  "ultima_ejecucion_exitosa": "2026-10-07T19:51:01",
+  "archivo_origen": "analisis_segmentado_SDE_2025T2.csv",
+  "identificador_ejecucion": "3726913efc6b4be0",
+  "hash_sha256": "5d8c7f44de7df1bdef167c5d1071d56ec4fabe7f7eb428888611ffac851f4cba",
+  "advertencias_metodologicas": [
+    "El aglomerado 18 no permite separar Santiago Capital de La Banda."
+  ],
+  "ingresos_nominales": false
+}

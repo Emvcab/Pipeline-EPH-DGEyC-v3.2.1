@@ -442,7 +442,7 @@ class TestSnapshot:
         assert marcador.read_text(encoding="utf-8") == "válido"
 
     def test_dashboard_usa_rutas_relativas(self):
-        codigo = (RAIZ / "notebooks" / "app.py").read_text(encoding="utf-8")
+        codigo = (RAIZ / "portal" / "app.py").read_text(encoding="utf-8")
         assert "Path(__file__).resolve().parent.parent" in codigo
         assert ":\\\\" not in codigo
 

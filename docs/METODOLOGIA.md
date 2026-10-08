@@ -51,3 +51,12 @@ La capa de análisis segmentado no modifica las tasas agregadas históricas del 
 - **Ingresos:** el promedio mostrado por segmento usa `P21 > 0` y `PONDIIO` entre ocupados, porque INDEC identifica `PONDIIO` como el ponderador corregido por no respuesta para el ingreso de la ocupación principal. Se expresa en pesos corrientes y no mide poder adquisitivo.
 
 Estas estimaciones son descriptivas. Las diferencias entre grupos no se presentan como causalidad ni como significancia estadística sin un tratamiento específico de errores muestrales.
+## Alcance inferencial de las comparaciones
+
+Las diferencias entre períodos y grupos que presenta el portal son de carácter descriptivo.
+
+La Encuesta Permanente de Hogares es una encuesta por muestreo. El pipeline utiliza los ponderadores correspondientes para producir estimaciones poblacionales, pero esta versión no estima errores estándar, intervalos de confianza ni pruebas de hipótesis asociadas al diseño muestral.
+
+Por este motivo, una diferencia observada —por ejemplo, entre varones y mujeres o entre dos trimestres— puede describirse en puntos porcentuales, pero no debe interpretarse automáticamente como una diferencia estadísticamente significativa.
+
+El sistema tampoco atribuye causalidad a las diferencias observadas.

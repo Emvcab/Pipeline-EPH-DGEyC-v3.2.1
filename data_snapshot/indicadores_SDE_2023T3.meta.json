@@ -10,8 +10,8 @@
   "periodo": "2023T3",
   "anio": 2023,
   "trimestre": 3,
-  "fecha_hora_generacion": "2026-07-13T20:25:35",
-  "version_pipeline": "3.0.0",
+  "fecha_hora_generacion": "2026-10-07T19:51:01",
+  "version_pipeline": "3.2.1",
   "filas": 1,
   "columnas": 30,
   "variables": [
@@ -206,8 +206,8 @@
   ],
   "ingresos_nominales": true,
   "estado_validacion": "VALIDADO",
-  "ultima_ejecucion_exitosa": "2026-07-13T20:25:35",
+  "ultima_ejecucion_exitosa": "2026-10-07T19:51:01",
   "archivo_origen": "historico_SDE.csv",
-  "identificador_ejecucion": "6f2221acde468316",
-  "hash_sha256": "42c579d8a12ef3f1e336a6dc73b1b42393eecc69791b5df98cd00378c2db9d78"
+  "identificador_ejecucion": "1ec93725c367cd4f",
+  "hash_sha256": "f9cf2cbc0c13ecac693ba17af6e8ebda6a85165296d5cacee285331546278ff8"
 }

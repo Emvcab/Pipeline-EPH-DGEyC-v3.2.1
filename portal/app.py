@@ -27,6 +27,8 @@ import portal_admin
 import pipeline as core
 from pipeline import normalizar_estado, normalizar_periodo
 from visualizacion import filtrar_rango_periodos, rango_eje, variacion
+from interpretacion_brechas import lectura_deciles, lectura_dimension
+from reporte_pdf import generar_reporte_pdf
 
 
 DIR_RESULTADOS = RAIZ / "results"
@@ -34,6 +36,43 @@ DIR_SNAPSHOT = RAIZ / "data_snapshot"
 DIR_DOCS = RAIZ / "docs"
 ESTADOS_VALIDOS = {"VALIDADO", "PUBLICADO"}
 PORTAL_VERSION = "3.3.0"
+
+
+# Colores consistentes para las categorías de la sección "Brechas y perfiles".
+# Se mantienen iguales aunque cambie el indicador seleccionado.
+COLORES_CATEGORIAS = {
+    "Varón": "#2563EB",
+    "Mujer": "#E11D48",
+    "14 a 29 años": "#2563EB",
+    "30 a 64 años": "#F59E0B",
+    "65 años y más": "#16A34A",
+    "Primario incompleto": "#2563EB",
+    "Primario completo": "#0891B2",
+    "Secundario incompleto": "#F59E0B",
+    "Secundario completo": "#EA580C",
+    "Superior/universitario incompleto": "#7C3AED",
+    "Superior/universitario completo": "#16A34A",
+    "Sin instrucción": "#64748B",
+}
+
+PALETA_CATEGORIAS = [
+    "#2563EB", "#E11D48", "#16A34A", "#F59E0B",
+    "#7C3AED", "#0891B2", "#EA580C", "#64748B",
+]
+
+# Escala secuencial para deciles: de menor a mayor ingreso.
+COLORES_DECILES = [
+    "#DBEAFE", "#BFDBFE", "#93C5FD", "#60A5FA", "#3B82F6",
+    "#2563EB", "#1D4ED8", "#1E40AF", "#1E3A8A", "#172554",
+]
+
+
+def colores_para_categorias(categorias: list[str]) -> list[str]:
+    """Asigna colores estables a categorías conocidas y una paleta al resto."""
+    colores: list[str] = []
+    for i, categoria in enumerate(categorias):
+        colores.append(COLORES_CATEGORIAS.get(str(categoria), PALETA_CATEGORIAS[i % len(PALETA_CATEGORIAS)]))
+    return colores
 
 
 def leer_json(ruta: Path) -> dict | None:
@@ -435,6 +474,37 @@ with tab_resumen:
         "no permiten separar Santiago Capital de La Banda."
     )
 
+    st.subheader("Reporte estático")
+    ruta_segmentado_pdf = DIR_ACTIVO / f"analisis_segmentado_SDE_{periodo_referencia}.csv"
+    segmentado_pdf = leer_csv(ruta_segmentado_pdf)
+    try:
+        pdf_reporte = generar_reporte_pdf(
+            df,
+            periodo_referencia,
+            periodo_comparacion=periodo_comparacion,
+            segmentado=segmentado_pdf,
+            fuente_descripcion=DESCRIPCION_FUENTE,
+        )
+        st.download_button(
+            "Descargar reporte PDF del período",
+            data=pdf_reporte,
+            file_name=f"Reporte_EPH_SDE_{periodo_referencia}.pdf",
+            mime="application/pdf",
+            key=f"pdf_reporte_{periodo_referencia}_{periodo_comparacion}",
+        )
+        if segmentado_pdf is None or segmentado_pdf.empty:
+            st.caption(
+                "El PDF se generará con indicadores generales. La sección segmentada se incorpora "
+                "automáticamente cuando existe la salida agregada del período."
+            )
+        else:
+            st.caption(
+                "Incluye indicadores principales, evolución reciente, ingresos, brechas y perfiles, "
+                "lecturas descriptivas y notas metodológicas."
+            )
+    except (ValueError, OSError) as error:
+        st.warning(f"No se pudo preparar el reporte PDF: {error}")
+
 
 with tab_evolucion:
     st.header("Evolución laboral")
@@ -543,13 +613,37 @@ with tab_brechas:
             key=f"brechas_dimension_{periodo_brechas}",
         )
         vista = brechas[brechas["dimension"].astype(str) == dimension].copy()
-        columnas_tabla = [
-            "categoria", "n_muestra", "poblacion_expandida", "tasa_actividad",
-            "tasa_empleo", "tasa_desocupacion", "tasa_informalidad",
-            "ingreso_promedio_ponderado_ocupados",
-        ]
-        columnas_tabla = [c for c in columnas_tabla if c in vista.columns]
-        st.dataframe(vista[columnas_tabla], width="stretch", hide_index=True)
+
+        if dimension == "Decil de ingreso":
+            vista["_orden_decil"] = pd.to_numeric(
+                vista["categoria"].astype(str).str.extract(r"(\d+)")[0],
+                errors="coerce",
+            )
+            vista = (
+                vista.sort_values("_orden_decil")
+                .drop(columns="_orden_decil")
+                .reset_index(drop=True)
+            )
+            columnas_tabla = [
+                "categoria", "n_muestra", "poblacion_expandida",
+                "ingreso_promedio_ponderado_ocupados",
+            ]
+            tabla = vista[columnas_tabla].copy().rename(columns={
+                "categoria": "Decil",
+                "n_muestra": "Muestra",
+                "poblacion_expandida": "Población expandida",
+                "ingreso_promedio_ponderado_ocupados": "Ingreso medio ocupación principal",
+            })
+        else:
+            columnas_tabla = [
+                "categoria", "n_muestra", "poblacion_expandida", "tasa_actividad",
+                "tasa_empleo", "tasa_desocupacion", "tasa_informalidad",
+                "ingreso_promedio_ponderado_ocupados",
+            ]
+            columnas_tabla = [c for c in columnas_tabla if c in vista.columns]
+            tabla = vista[columnas_tabla].copy()
+
+        st.dataframe(tabla, width="stretch", hide_index=True)
 
         if dimension != "Decil de ingreso":
             metrica = st.selectbox(
@@ -567,11 +661,22 @@ with tab_brechas:
             graf[metrica] = pd.to_numeric(graf[metrica], errors="coerce")
             graf = graf.dropna()
             if not graf.empty:
-                fig = go.Figure(go.Bar(
-                    x=graf["categoria"], y=graf[metrica],
+                categorias_graf = graf["categoria"].astype(str).tolist()
+                valores = graf[metrica].astype(float).tolist()
+                colores = colores_para_categorias(categorias_graf)
+
+                # Gráfico de puntos: permite ajustar el eje sin exagerar visualmente
+                # las diferencias como ocurriría con barras truncadas.
+                fig = go.Figure(go.Scatter(
+                    x=categorias_graf,
+                    y=valores,
+                    mode="markers+text",
+                    marker=dict(size=20, color=colores, line=dict(width=1, color="white")),
+                    text=[f"{valor:.2f}%" for valor in valores],
+                    textposition="top center",
                     hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>",
+                    showlegend=False,
                 ))
-                valores = graf[metrica].tolist()
                 rango = rango_eje(valores)
                 fig.update_layout(
                     title=f"{dimension} · {periodo_brechas}",
@@ -588,16 +693,31 @@ with tab_brechas:
             )
             graf = graf.dropna()
             if not graf.empty:
+                categorias_decil = graf["categoria"].astype(str).tolist()
+                colores_decil = [
+                    COLORES_DECILES[min(max(int(str(cat).split()[-1]) - 1, 0), 9)]
+                    for cat in categorias_decil
+                ]
                 fig = go.Figure(go.Bar(
-                    x=graf["categoria"], y=graf["ingreso_promedio_ponderado_ocupados"],
+                    x=categorias_decil,
+                    y=graf["ingreso_promedio_ponderado_ocupados"],
+                    marker_color=colores_decil,
                     hovertemplate="%{x}<br>$%{y:,.0f}<extra></extra>",
                 ))
                 fig.update_layout(
                     title=f"Ingreso medio de la ocupación principal por decil · {periodo_brechas}",
                     xaxis_title="", yaxis_title="Pesos corrientes",
                     margin=dict(l=20, r=20, t=55, b=20),
+                    showlegend=False,
                 )
                 st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+
+        st.subheader("Lectura descriptiva del período")
+        if dimension == "Decil de ingreso":
+            mensajes_lectura = lectura_deciles(vista)
+        else:
+            mensajes_lectura = lectura_dimension(vista, dimension, metrica)
+        st.info("\n\n".join(f"• {mensaje}" for mensaje in mensajes_lectura))
 
         st.caption(
             "Sexo: tasas específicas para población de 14 años y más. Los deciles utilizan "
