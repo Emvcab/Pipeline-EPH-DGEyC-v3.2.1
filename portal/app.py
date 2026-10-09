@@ -28,6 +28,7 @@ import pipeline as core
 from pipeline import normalizar_estado, normalizar_periodo
 from visualizacion import filtrar_rango_periodos, rango_eje, variacion
 from interpretacion_brechas import lectura_deciles, lectura_dimension
+from reporte_pdf import generar_reporte_pdf
 
 
 DIR_RESULTADOS = RAIZ / "results"
@@ -473,6 +474,39 @@ with tab_resumen:
         "Advertencia territorial: los microdatos públicos identifican el aglomerado conjunto y "
         "no permiten separar Santiago Capital de La Banda."
     )
+
+    st.subheader("Reporte estático")
+    st.caption(
+        "Genera un PDF ejecutivo del período de referencia usando únicamente las salidas "
+        "agregadas validadas. El reporte no recalcula el ETL."
+    )
+    ruta_segmentado_reporte = (
+        DIR_ACTIVO / f"analisis_segmentado_SDE_{periodo_referencia}.csv"
+    )
+    segmentado_reporte = leer_csv(ruta_segmentado_reporte)
+    try:
+        pdf_reporte = generar_reporte_pdf(
+            df,
+            periodo_referencia,
+            periodo_comparacion=periodo_comparacion,
+            segmentado=segmentado_reporte,
+            fuente_descripcion=DESCRIPCION_FUENTE,
+        )
+        st.download_button(
+            "Descargar reporte estático PDF",
+            data=pdf_reporte,
+            file_name=f"Reporte_EPH_SDE_{periodo_referencia}.pdf",
+            mime="application/pdf",
+            key=f"descargar_reporte_pdf_{periodo_referencia}_{periodo_comparacion}",
+            type="primary",
+        )
+        if segmentado_reporte is None or segmentado_reporte.empty:
+            st.caption(
+                "El PDF se genera con los indicadores generales. No se encontró una salida "
+                "segmentada agregada para este período."
+            )
+    except Exception as error:
+        st.warning(f"No se pudo generar el reporte PDF: {error}")
 
 
 with tab_evolucion:
