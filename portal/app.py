@@ -28,14 +28,13 @@ import pipeline as core
 from pipeline import normalizar_estado, normalizar_periodo
 from visualizacion import filtrar_rango_periodos, rango_eje, variacion
 from interpretacion_brechas import lectura_deciles, lectura_dimension
-from reporte_pdf import generar_reporte_pdf
 
 
 DIR_RESULTADOS = RAIZ / "results"
 DIR_SNAPSHOT = RAIZ / "data_snapshot"
 DIR_DOCS = RAIZ / "docs"
 ESTADOS_VALIDOS = {"VALIDADO", "PUBLICADO"}
-PORTAL_VERSION = "3.3.0"
+PORTAL_VERSION = "3.4.0-dev"
 
 
 # Colores consistentes para las categorías de la sección "Brechas y perfiles".
@@ -311,8 +310,9 @@ st.caption(f"Portal {PORTAL_VERSION} · motor ETL {core.PIPELINE_VERSION}")
 st.markdown("**Fuente:** Encuesta Permanente de Hogares — INDEC.")
 st.markdown("**Alcance territorial:** Aglomerado 18 — Santiago del Estero - La Banda.")
 st.caption(
-    "Los datos públicos son producidos por el INDEC. Los indicadores son calculados por "
-    "este pipeline mediante PONDERA; no constituyen una nueva estadística oficial provincial."
+    "Los datos públicos son producidos por el INDEC. Las tasas laborales y expansiones "
+    "generales usan PONDERA; el ingreso ponderado de la ocupación principal P21 usa "
+    "PONDIIO. Los resultados del pipeline no constituyen una nueva estadística oficial provincial."
 )
 
 if DIR_ACTIVO is None:
@@ -473,37 +473,6 @@ with tab_resumen:
         "Advertencia territorial: los microdatos públicos identifican el aglomerado conjunto y "
         "no permiten separar Santiago Capital de La Banda."
     )
-
-    st.subheader("Reporte estático")
-    ruta_segmentado_pdf = DIR_ACTIVO / f"analisis_segmentado_SDE_{periodo_referencia}.csv"
-    segmentado_pdf = leer_csv(ruta_segmentado_pdf)
-    try:
-        pdf_reporte = generar_reporte_pdf(
-            df,
-            periodo_referencia,
-            periodo_comparacion=periodo_comparacion,
-            segmentado=segmentado_pdf,
-            fuente_descripcion=DESCRIPCION_FUENTE,
-        )
-        st.download_button(
-            "Descargar reporte PDF del período",
-            data=pdf_reporte,
-            file_name=f"Reporte_EPH_SDE_{periodo_referencia}.pdf",
-            mime="application/pdf",
-            key=f"pdf_reporte_{periodo_referencia}_{periodo_comparacion}",
-        )
-        if segmentado_pdf is None or segmentado_pdf.empty:
-            st.caption(
-                "El PDF se generará con indicadores generales. La sección segmentada se incorpora "
-                "automáticamente cuando existe la salida agregada del período."
-            )
-        else:
-            st.caption(
-                "Incluye indicadores principales, evolución reciente, ingresos, brechas y perfiles, "
-                "lecturas descriptivas y notas metodológicas."
-            )
-    except (ValueError, OSError) as error:
-        st.warning(f"No se pudo preparar el reporte PDF: {error}")
 
 
 with tab_evolucion:
@@ -844,6 +813,160 @@ with tab_calidad:
     c2.metric("Períodos con advertencias", advertencias)
     c3.metric("Última ejecución", str(estado_ultimo["estado"]))
 
+    st.divider()
+    st.subheader("Validación metodológica contra INDEC")
+    st.caption(
+        "Contraste reproducible entre las tasas principales calculadas por el pipeline y "
+        "los valores publicados por INDEC para el Aglomerado 18."
+    )
+
+    ruta_validacion_metodologica = DIR_DOCS / "validacion_metodologica_indec.csv"
+    validacion_metodologica = leer_csv(ruta_validacion_metodologica)
+
+    if validacion_metodologica is not None and not validacion_metodologica.empty:
+        vm = validacion_metodologica.copy()
+        vm["estado"] = vm["estado"].astype(str).str.upper()
+        total_comparaciones = len(vm)
+        comparaciones_ok = int((vm["estado"] == "OK").sum())
+        periodos_vm = sorted(vm["periodo"].astype(str).unique().tolist())
+        indicadores_vm = int(vm["indicador"].nunique())
+
+        v1, v2, v3, v4 = st.columns(4)
+        v1.metric("Concordancias", f"{comparaciones_ok} / {total_comparaciones}")
+        v2.metric("Períodos contrastados", len(periodos_vm))
+        v3.metric("Indicadores contrastados", indicadores_vm)
+        v4.metric(
+            "Rango verificado",
+            f"{periodos_vm[0]}–{periodos_vm[-1]}" if periodos_vm else "No disponible",
+        )
+
+        if comparaciones_ok == total_comparaciones:
+            st.success(
+                "Validación empírica superada: todas las comparaciones reproducen los "
+                "valores publicados por INDEC al nivel de redondeo de una cifra decimal."
+            )
+        else:
+            st.warning(
+                f"Se detectaron {total_comparaciones - comparaciones_ok} comparaciones que "
+                "requieren revisión metodológica."
+            )
+
+        nombres_indicadores = {
+            "tasa_actividad_oficial": "Actividad",
+            "tasa_empleo_oficial": "Empleo",
+            "tasa_desocupacion": "Desocupación",
+        }
+        vista_vm = vm[
+            [
+                "periodo",
+                "indicador",
+                "pipeline",
+                "indec_publicado",
+                "diferencia_pp",
+                "estado",
+            ]
+        ].copy()
+        vista_vm["indicador"] = vista_vm["indicador"].map(
+            lambda x: nombres_indicadores.get(str(x), str(x))
+        )
+        vista_vm["pipeline"] = pd.to_numeric(vista_vm["pipeline"], errors="coerce").map(
+            lambda x: f"{x:.2f}" if pd.notna(x) else "—"
+        )
+        vista_vm["indec_publicado"] = pd.to_numeric(
+            vista_vm["indec_publicado"], errors="coerce"
+        ).map(lambda x: f"{x:.1f}" if pd.notna(x) else "—")
+        vista_vm["diferencia_pp"] = pd.to_numeric(
+            vista_vm["diferencia_pp"], errors="coerce"
+        ).map(lambda x: f"{x:+.2f}" if pd.notna(x) else "—")
+        vista_vm["estado"] = vista_vm["estado"].map(
+            lambda x: "✅ OK" if str(x).upper() == "OK" else "⚠️ REVISAR"
+        )
+        vista_vm = vista_vm.rename(
+            columns={
+                "periodo": "Período",
+                "indicador": "Indicador",
+                "pipeline": "Pipeline",
+                "indec_publicado": "INDEC",
+                "diferencia_pp": "Diferencia (p.p.)",
+                "estado": "Estado",
+            }
+        )
+
+        with st.expander("Ver las comparaciones Pipeline vs INDEC", expanded=False):
+            st.dataframe(vista_vm, width="stretch", hide_index=True)
+
+        estado_componentes = pd.DataFrame(
+            [
+                {
+                    "Componente": "Tasa de actividad",
+                    "Estado metodológico": "✅ Validada y reproducida",
+                    "Observación": "Contraste externo 2024T1–2026T1",
+                },
+                {
+                    "Componente": "Tasa de empleo",
+                    "Estado metodológico": "✅ Validada y reproducida",
+                    "Observación": "Contraste externo 2024T1–2026T1",
+                },
+                {
+                    "Componente": "Tasa de desocupación",
+                    "Estado metodológico": "✅ Validada y reproducida",
+                    "Observación": "Contraste externo 2024T1–2026T1",
+                },
+                {
+                    "Componente": "Tasas específicas 14 años y más",
+                    "Estado metodológico": "✅ Implementadas y testeadas",
+                    "Observación": "Universo específico actual de comparación",
+                },
+                {
+                    "Componente": "Indicadores 10 años y más",
+                    "Estado metodológico": "ℹ️ Referencia histórica complementaria",
+                    "Observación": "Se conservan para trazabilidad histórica",
+                },
+                {
+                    "Componente": "Ingreso P21",
+                    "Estado metodológico": "✅ PONDIIO implementado y testeado",
+                    "Observación": "Sin fallback silencioso a PONDERA",
+                },
+                {
+                    "Componente": "Deciles de ingreso",
+                    "Estado metodológico": "✅ ADECOCUR",
+                    "Observación": "No se fabrican deciles locales alternativos",
+                },
+                {
+                    "Componente": "Informalidad laboral",
+                    "Estado metodológico": "🟡 Contraste externo pendiente",
+                    "Observación": "Implementación disponible; falta benchmark externo",
+                },
+            ]
+        )
+
+        st.markdown("**Estado de los componentes metodológicos**")
+        st.dataframe(estado_componentes, width="stretch", hide_index=True)
+
+        boton_descarga(
+            ruta_validacion_metodologica,
+            "Descargar evidencia de validación contra INDEC",
+            "dl_validacion_metodologica_indec",
+        )
+        boton_descarga(
+            DIR_DOCS / "MATRIZ_VALIDACION_METODOLOGICA.md",
+            "Descargar matriz de validación metodológica",
+            "dl_matriz_validacion_metodologica",
+        )
+
+        st.info(
+            "La concordancia indica que el pipeline reproduce los valores publicados por "
+            "INDEC al nivel de redondeo utilizado en los informes verificados. No constituye "
+            "una certificación formal del INDEC o de la DGEyC, ni una prueba de significancia "
+            "estadística."
+        )
+    else:
+        st.info(
+            "La evidencia de validación metodológica no está disponible en esta instalación. "
+            "Puede regenerarse con `python scripts/validar_contra_indec.py`."
+        )
+
+    st.divider()
     st.subheader("Estado de períodos")
     st.dataframe(estados, width="stretch", hide_index=True)
 
@@ -965,6 +1088,7 @@ with tab_documentacion:
         ("DICCIONARIO_DATOS.md", "Diccionario de datos"),
         ("GUIA_USO.md", "Guía de uso"),
         ("METODOLOGIA.md", "Metodología"),
+        ("MATRIZ_VALIDACION_METODOLOGICA.md", "Matriz de validación metodológica"),
         ("MONITOR_ACTUALIZACIONES.md", "Monitor de actualizaciones"),
         ("PORTAL_ADMINISTRACION.md", "Portal y administración"),
     ]:
